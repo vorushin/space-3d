@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Space 3D - Six Degrees of Freedom</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: 'Courier New', monospace;
+            background: #000;
+        }
+
+        #renderCanvas {
+            width: 100%;
+            height: 100vh;
+            display: block;
+            outline: none;
+        }
+
+        #ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            color: #0f0;
+            text-shadow: 0 0 5px #0f0;
+        }
+
+        #hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+        }
+
+        #stats {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border: 2px solid #0f0;
+            border-radius: 5px;
+        }
+
+        .stat-line {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+
+        #sector-info {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border: 2px solid #0f0;
+            border-radius: 5px;
+        }
+
+        #upgrade-menu {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border: 2px solid #0f0;
+            border-radius: 5px;
+            pointer-events: auto;
+            display: none;
+        }
+
+        .upgrade-btn {
+            background: #000;
+            color: #0f0;
+            border: 2px solid #0f0;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .upgrade-btn:hover {
+            background: #0f0;
+            color: #000;
+        }
+
+        .upgrade-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            border: 2px solid #0f0;
+            border-radius: 50%;
+            box-shadow: 0 0 10px #0f0;
+        }
+
+        #crosshair::before, #crosshair::after {
+            content: '';
+            position: absolute;
+            background: #0f0;
+        }
+
+        #crosshair::before {
+            width: 2px;
+            height: 8px;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        #crosshair::after {
+            width: 8px;
+            height: 2px;
+            left: -10px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+    </style>
+</head>
+<body>
+    <canvas id="renderCanvas"></canvas>
+
+    <div id="ui">
+        <div id="hud">
+            <div id="stats">
+                <div class="stat-line">HEALTH: <span id="health">100</span>%</div>
+                <div class="stat-line">RESOURCES: <span id="resources">0</span></div>
+                <div class="stat-line">ENEMIES: <span id="enemies">0</span></div>
+                <div class="stat-line">STATION HP: <span id="station-health">100</span>%</div>
+            </div>
+        </div>
+
+        <div id="sector-info">
+            <div class="stat-line"><strong>SECTOR <span id="sector">1</span></strong></div>
+            <div class="stat-line">Ship Guns: Lvl <span id="ship-guns">1</span></div>
+            <div class="stat-line">Station: Lvl <span id="station-level">1</span></div>
+            <div class="stat-line">Defense: Lvl <span id="defense-level">1</span></div>
+        </div>
+
+        <div id="crosshair"></div>
+
+        <div id="upgrade-menu">
+            <h3 style="margin-top: 0; text-align: center;">UPGRADES [TAB]</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                <div>
+                    <h4>SHIP WEAPONS</h4>
+                    <button class="upgrade-btn" id="upgrade-ship-guns">
+                        Upgrade (Cost: <span id="ship-guns-cost">50</span>)
+                    </button>
+                </div>
+                <div>
+                    <h4>STATION</h4>
+                    <button class="upgrade-btn" id="upgrade-station">
+                        Upgrade (Cost: <span id="station-cost">100</span>)
+                    </button>
+                </div>
+                <div>
+                    <h4>DEFENSE TURRETS</h4>
+                    <button class="upgrade-btn" id="upgrade-defense">
+                        Upgrade (Cost: <span id="defense-cost">75</span>)
+                    </button>
+                </div>
+            </div>
+            <div style="text-align: center; margin-top: 15px;">
+                <button class="upgrade-btn" id="hyperspace-btn" style="font-size: 16px; font-weight: bold;">
+                    HYPERSPACE JUMP
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
