@@ -9,32 +9,55 @@ export class Projectile {
     public isAlive: boolean = true;
     public owner: string; // 'player', 'enemy', or 'turret'
     public color: Color3; // Color of the projectile
+    public splashRadius: number = 0; // Splash damage radius
 
     private lifetime: number = 5; // seconds
     private age: number = 0;
+    private size: number = 0.3; // Default size
 
-    constructor(scene: Scene, position: Vector3, direction: Vector3, speed: number, damage: number, owner: string) {
+    constructor(
+        scene: Scene,
+        position: Vector3,
+        direction: Vector3,
+        speed: number,
+        damage: number,
+        owner: string,
+        color?: Color3,
+        size?: number,
+        lifetime?: number,
+        splashRadius?: number
+    ) {
         this.scene = scene;
         this.position = position.clone();
         this.velocity = direction.scale(speed);
         this.damage = damage;
         this.owner = owner;
+        this.size = size || 0.3;
+        this.lifetime = lifetime || 5;
+        this.splashRadius = splashRadius || 0;
+
+        // Use provided color or default based on owner
+        if (color) {
+            this.color = color;
+        } else {
+            this.color = (owner === 'player' || owner === 'turret') ? new Color3(0, 1, 0) : new Color3(1, 0, 0);
+        }
 
         this.mesh = this.createProjectileMesh();
         this.mesh.position = position;
     }
 
     private createProjectileMesh(): Mesh {
-        const projectile = MeshBuilder.CreateSphere('projectile', { diameter: 0.3 }, this.scene);
+        const projectile = MeshBuilder.CreateSphere('projectile', { diameter: this.size * 2 }, this.scene);
 
         const material = new StandardMaterial('projectileMaterial', this.scene);
+        material.emissiveColor = this.color;
+        material.diffuseColor = this.color;
+        material.disableLighting = true; // Make it glow
 
-        if (this.owner === 'player' || this.owner === 'turret') {
-            this.color = new Color3(0, 1, 0); // Green
-            material.emissiveColor = this.color;
-        } else {
-            this.color = new Color3(1, 0, 0); // Red
-            material.emissiveColor = this.color;
+        // Add extra glow for white/bright bullets (singularity)
+        if (this.color.r > 0.9 && this.color.g > 0.9 && this.color.b > 0.9) {
+            material.emissiveColor = this.color.scale(1.5);
         }
 
         projectile.material = material;

@@ -1,6 +1,7 @@
 import { Scene, Mesh, MeshBuilder, Vector3, StandardMaterial, Color3, Camera, Ray, ParticleSystem, Texture } from '@babylonjs/core';
 import { Projectile } from './Projectile';
 import { ExplosionEffect } from '../effects/ExplosionEffect';
+import { WeaponSystem, WeaponConfig } from '../systems/WeaponSystem';
 
 export class Player {
     private scene: Scene;
@@ -16,22 +17,25 @@ export class Player {
 
     private isShooting: boolean = false;
     private shootCooldown: number = 0;
-    private fireRate: number = 0.15; // Time between shots
     public projectiles: Projectile[] = [];
 
-    // Ship weapon stats
+    // Weapon system
     public weaponLevel: number = 1;
-    private damage: number = 10;
-    private bulletSpeed: number = 100;
-    private bulletSpread: number = 0.02;
+    private weaponConfig: WeaponConfig;
+    public resourceMultiplier: number = 1.0;
 
     constructor(scene: Scene, position: Vector3, camera: Camera) {
         this.scene = scene;
         this.position = position.clone();
         this.camera = camera;
 
+        // Initialize weapon config
+        this.weaponConfig = WeaponSystem.getWeaponConfig(this.weaponLevel);
+        this.resourceMultiplier = this.weaponConfig.resourceMultiplier;
+
         this.mesh = this.createShipMesh();
         this.mesh.position = position;
+        this.updateShipVisuals();
     }
 
     private createShipMesh(): Mesh {
@@ -58,9 +62,9 @@ export class Player {
         this.handleMovement(deltaTime);
         this.shootCooldown = Math.max(0, this.shootCooldown - deltaTime);
 
-        if (this.isShooting && this.shootCooldown <= 0) {
+        if (this.isShooting && this.shootCooldown <= 0 && this.weaponLevel > 0) {
             this.shoot();
-            this.shootCooldown = this.fireRate;
+            this.shootCooldown = this.weaponConfig.fireRate;
         }
 
         // Update projectiles
@@ -103,32 +107,50 @@ export class Player {
 
     private shoot(): void {
         const forward = this.camera.getDirection(Vector3.Forward());
+        const right = this.camera.getDirection(Vector3.Right());
+        const up = this.camera.getDirection(Vector3.Up());
         const spawnOffset = forward.scale(2);
         const spawnPosition = this.camera.position.add(spawnOffset);
 
-        // Add slight random spread
-        const spread = this.bulletSpread;
-        const spreadX = (Math.random() - 0.5) * spread;
-        const spreadY = (Math.random() - 0.5) * spread;
+        const bulletCount = this.weaponConfig.bulletCount;
+        const spreadAngle = this.weaponConfig.spreadAngle;
 
-        const right = this.camera.getDirection(Vector3.Right());
-        const up = this.camera.getDirection(Vector3.Up());
+        // Create multiple bullets in spread pattern
+        for (let i = 0; i < bulletCount; i++) {
+            // Calculate spread offset for this bullet
+            let angleOffset = 0;
+            if (bulletCount > 1) {
+                // Center the spread around the forward direction
+                const spreadIndex = i - (bulletCount - 1) / 2;
+                angleOffset = spreadIndex * spreadAngle;
+            }
 
-        const direction = forward
-            .add(right.scale(spreadX))
-            .add(up.scale(spreadY))
-            .normalize();
+            // Apply spread in a horizontal arc (rotate around up axis)
+            const cosAngle = Math.cos(angleOffset);
+            const sinAngle = Math.sin(angleOffset);
 
-        const projectile = new Projectile(
-            this.scene,
-            spawnPosition,
-            direction,
-            this.bulletSpeed,
-            this.damage,
-            'player'
-        );
+            const spreadForward = forward.scale(cosAngle).add(right.scale(sinAngle));
+            const direction = spreadForward.normalize();
 
-        this.projectiles.push(projectile);
+            // Add vertical spread for 3D (smaller)
+            const verticalSpread = (Math.random() - 0.5) * 0.03;
+            const finalDirection = direction.add(up.scale(verticalSpread)).normalize();
+
+            const projectile = new Projectile(
+                this.scene,
+                spawnPosition,
+                finalDirection,
+                this.weaponConfig.bulletSpeed,
+                this.weaponConfig.damage,
+                'player',
+                this.weaponConfig.color,
+                this.weaponConfig.bulletSize,
+                this.weaponConfig.lifetime,
+                this.weaponConfig.splashRadius
+            );
+
+            this.projectiles.push(projectile);
+        }
     }
 
     public startShooting(): void {
@@ -158,10 +180,47 @@ export class Player {
     }
 
     public upgradeWeapons(): void {
+        if (this.weaponLevel >= 10) return; // Max level
+
         this.weaponLevel++;
-        this.fireRate = Math.max(0.05, 0.15 - (this.weaponLevel * 0.01));
-        this.damage = 10 + (this.weaponLevel * 5);
-        this.bulletSpread = Math.max(0.005, 0.02 - (this.weaponLevel * 0.001));
+        this.weaponConfig = WeaponSystem.getWeaponConfig(this.weaponLevel);
+        this.resourceMultiplier = this.weaponConfig.resourceMultiplier;
+        this.updateShipVisuals();
+
+        console.log(`Weapon upgraded to Level ${this.weaponLevel}: ${this.weaponConfig.name}`);
+    }
+
+    private updateShipVisuals(): void {
+        // Update ship scale based on weapon level
+        const scale = WeaponSystem.getShipScaleMultiplier(this.weaponLevel);
+        this.mesh.scaling.setAll(scale);
+
+        // Update ship material with glow
+        const material = this.mesh.material as StandardMaterial;
+        if (material) {
+            const glowIntensity = WeaponSystem.getGlowIntensity(this.weaponLevel);
+
+            // Add weapon-level-appropriate glow color
+            if (WeaponSystem.hasSingularityEffect(this.weaponLevel)) {
+                material.emissiveColor = new Color3(0.5, 0.5, 1).scale(glowIntensity);
+            } else if (WeaponSystem.hasQuantumEffect(this.weaponLevel)) {
+                material.emissiveColor = new Color3(0.5, 0, 0.8).scale(glowIntensity);
+            } else if (WeaponSystem.hasIonEffect(this.weaponLevel)) {
+                material.emissiveColor = new Color3(0, 0.3, 0.8).scale(glowIntensity);
+            } else if (WeaponSystem.hasPlasmaEffect(this.weaponLevel)) {
+                material.emissiveColor = new Color3(0.6, 0, 0.6).scale(glowIntensity);
+            } else {
+                material.emissiveColor = new Color3(0.1, 0.4, 0.5).scale(1 + glowIntensity);
+            }
+        }
+    }
+
+    public getWeaponConfig(): WeaponConfig {
+        return this.weaponConfig;
+    }
+
+    public getUpgradeCost(): number {
+        return WeaponSystem.calculateUpgradeCost(this.weaponLevel + 1);
     }
 
     private onDeath(): void {

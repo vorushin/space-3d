@@ -1,75 +1,282 @@
 import { Game } from '../Game';
+import { WeaponSystem } from './WeaponSystem';
 
 export class UIManager {
     private game: Game;
-    private upgradeMenuVisible: boolean = false;
 
     constructor(game: Game) {
         this.game = game;
         this.setupEventListeners();
+        this.setupKeyboardShortcuts();
     }
 
     private setupEventListeners(): void {
-        // Ship guns upgrade
-        const shipGunsBtn = document.getElementById('upgrade-ship-guns');
-        shipGunsBtn?.addEventListener('click', () => {
+        // Ship weapons upgrade
+        const shipBtn = document.getElementById('upgrade-ship-btn');
+        shipBtn?.addEventListener('click', () => {
             this.game.progressionManager.upgradeShipGuns();
         });
 
         // Station upgrade
-        const stationBtn = document.getElementById('upgrade-station');
+        const stationBtn = document.getElementById('upgrade-station-btn');
         stationBtn?.addEventListener('click', () => {
             this.game.progressionManager.upgradeStation();
         });
 
         // Defense upgrade
-        const defenseBtn = document.getElementById('upgrade-defense');
+        const defenseBtn = document.getElementById('upgrade-defense-btn');
         defenseBtn?.addEventListener('click', () => {
             this.game.progressionManager.upgradeDefense();
         });
 
-        // Hyperspace button
-        const hyperspaceBtn = document.getElementById('hyperspace-btn');
-        hyperspaceBtn?.addEventListener('click', () => {
-            this.game.progressionManager.hyperspace();
+        // Debug: Add resources
+        const debugAddResourcesBtn = document.getElementById('debug-add-resources');
+        debugAddResourcesBtn?.addEventListener('click', () => {
+            this.game.progressionManager.addResources(1000);
+        });
+    }
+
+    private setupKeyboardShortcuts(): void {
+        window.addEventListener('keydown', (e) => {
+            // Keyboard shortcuts: 1, 2, 3 for upgrades
+            if (e.key === '1' && this.game.progressionManager.canUpgradeShipGuns()) {
+                this.game.progressionManager.upgradeShipGuns();
+            } else if (e.key === '2' && this.game.progressionManager.canUpgradeStation()) {
+                this.game.progressionManager.upgradeStation();
+            } else if (e.key === '3' && this.game.progressionManager.canUpgradeDefense() && this.game.progressionManager.stationLevel > 0) {
+                this.game.progressionManager.upgradeDefense();
+            }
+            // Debug shortcuts
+            else if (e.key === 'r' || e.key === 'R') {
+                this.game.progressionManager.addResources(1000);
+            }
         });
     }
 
     public update(): void {
         const pm = this.game.progressionManager;
 
-        // Update stats
+        // Update HUD stats
         this.updateElement('health', Math.round(this.game.player.health));
         this.updateElement('resources', pm.resources);
         this.updateElement('enemies', this.game.enemyManager.enemies.length);
         this.updateElement('station-health', Math.round(this.game.station.health));
 
+        // Update large resource counter
+        this.updateElement('resources-large', pm.resources);
+
         // Update sector info
         this.updateElement('sector', pm.currentSector);
-        this.updateElement('ship-guns', pm.shipGunsLevel);
-        this.updateElement('station-level', pm.stationLevel);
-        this.updateElement('defense-level', pm.defenseLevel);
+        this.updateElement('sector-name', pm.getSectorName().toUpperCase());
 
-        // Update upgrade costs
-        this.updateElement('ship-guns-cost', pm.getShipGunsCost());
-        this.updateElement('station-cost', pm.getStationCost());
-        this.updateElement('defense-cost', pm.getDefenseCost());
+        // Update all upgrade panels
+        this.updateShipWeaponsPanel();
+        this.updateStationPanel();
+        this.updateDefensePanel();
+        this.updateMissionObjectives();
+    }
 
-        // Update button states
-        this.updateButtonState('upgrade-ship-guns', pm.canUpgradeShipGuns());
-        this.updateButtonState('upgrade-station', pm.canUpgradeStation());
-        this.updateButtonState('upgrade-defense', pm.canUpgradeDefense());
-        this.updateButtonState('hyperspace-btn', pm.canHyperspace());
+    private updateShipWeaponsPanel(): void {
+        const pm = this.game.progressionManager;
+        const level = pm.shipGunsLevel;
 
-        // Update hyperspace button text
-        const hyperspaceBtn = document.getElementById('hyperspace-btn');
-        if (hyperspaceBtn) {
-            if (pm.currentSector >= 4) {
-                hyperspaceBtn.textContent = 'MAX SECTOR REACHED';
-            } else if (pm.canHyperspace()) {
-                hyperspaceBtn.textContent = `HYPERSPACE JUMP → SECTOR ${pm.currentSector + 1}`;
+        // Get weapon config from WeaponSystem
+        const weaponConfig = WeaponSystem.getWeaponConfig(level);
+
+        // Update weapon name and level
+        this.updateElement('weapon-name', weaponConfig.name);
+        this.updateElement('ship-guns-lvl', level);
+
+        // Calculate progress
+        const currentResources = pm.resources;
+        const nextLevelCost = pm.getShipGunsCost();
+        const progress = Math.min(100, (currentResources / nextLevelCost) * 100);
+
+        // Update progress bar
+        const progressBar = document.getElementById('ship-progress');
+        if (progressBar) {
+            progressBar.style.width = `${progress}%`;
+        }
+
+        // Update progress text
+        this.updateElement('ship-progress-text', `${currentResources} / ${nextLevelCost}`);
+
+        // Update button state and text
+        const button = document.getElementById('upgrade-ship-btn') as HTMLButtonElement;
+        const buttonText = document.getElementById('ship-btn-text');
+
+        if (button && buttonText) {
+            if (level >= 10) {
+                button.disabled = true;
+                button.classList.remove('ready');
+                buttonText.textContent = 'MAX LEVEL';
+            } else if (pm.canUpgradeShipGuns()) {
+                button.disabled = false;
+                button.classList.add('ready');
+                buttonText.textContent = '+1';
             } else {
-                hyperspaceBtn.textContent = 'LOCKED (Need Lvl 3 All Systems)';
+                button.disabled = true;
+                button.classList.remove('ready');
+                const needed = nextLevelCost - currentResources;
+                buttonText.textContent = `Need ${needed} more`;
+            }
+        }
+    }
+
+    private updateStationPanel(): void {
+        const pm = this.game.progressionManager;
+        const level = pm.stationLevel;
+
+        // Get panel and update state
+        const panel = document.getElementById('station-panel');
+        const nameElement = panel?.querySelector('.upgrade-name');
+
+        if (panel && nameElement) {
+            if (level === 0) {
+                panel.classList.add('disabled');
+                nameElement.textContent = 'No Station';
+            } else {
+                panel.classList.remove('disabled');
+                nameElement.textContent = 'Station';
+            }
+        }
+
+        // Update level
+        this.updateElement('station-lvl', level);
+
+        // Calculate progress
+        const currentResources = pm.resources;
+        const cost = pm.getStationCost();
+        const progress = Math.min(100, (currentResources / cost) * 100);
+
+        // Update progress bar
+        const progressBar = document.getElementById('station-progress');
+        if (progressBar) {
+            progressBar.style.width = `${progress}%`;
+        }
+
+        // Update progress text
+        this.updateElement('station-progress-text', `${currentResources} / ${cost}`);
+
+        // Update button state
+        const button = document.getElementById('upgrade-station-btn') as HTMLButtonElement;
+
+        if (button) {
+            if (pm.canUpgradeStation()) {
+                button.disabled = false;
+                button.classList.add('ready');
+                button.innerHTML = '<span class="shortcut-key">2</span><span>+1</span>';
+            } else {
+                button.disabled = true;
+                button.classList.remove('ready');
+                const needed = cost - currentResources;
+                button.innerHTML = `<span class="shortcut-key">2</span><span>Need ${needed} more</span>`;
+            }
+        }
+    }
+
+    private updateDefensePanel(): void {
+        const pm = this.game.progressionManager;
+        const level = pm.defenseLevel;
+        const stationLevel = pm.stationLevel;
+
+        // Get panel and update state
+        const panel = document.getElementById('defense-panel');
+        const nameElement = panel?.querySelector('.upgrade-name');
+
+        if (panel && nameElement) {
+            if (level === 0) {
+                panel.classList.add('disabled');
+                nameElement.textContent = 'No Defense';
+            } else {
+                panel.classList.remove('disabled');
+                nameElement.textContent = `Defense Turrets`;
+            }
+        }
+
+        // Update level
+        this.updateElement('defense-lvl', level);
+
+        // Calculate progress
+        const currentResources = pm.resources;
+        const cost = pm.getDefenseCost();
+        const progress = Math.min(100, (currentResources / cost) * 100);
+
+        // Update progress bar
+        const progressBar = document.getElementById('defense-progress');
+        if (progressBar) {
+            progressBar.style.width = `${progress}%`;
+        }
+
+        // Update progress text
+        this.updateElement('defense-progress-text', `${currentResources} / ${cost}`);
+
+        // Update button state
+        const button = document.getElementById('upgrade-defense-btn') as HTMLButtonElement;
+
+        if (button) {
+            if (stationLevel === 0) {
+                // No station built yet
+                button.disabled = true;
+                button.classList.remove('ready');
+                button.innerHTML = '<span class="shortcut-key">3</span><span>BUILD STATION FIRST</span>';
+            } else if (pm.canUpgradeDefense()) {
+                button.disabled = false;
+                button.classList.add('ready');
+                button.innerHTML = '<span class="shortcut-key">3</span><span>+1</span>';
+            } else {
+                button.disabled = true;
+                button.classList.remove('ready');
+                const needed = cost - currentResources;
+                button.innerHTML = `<span class="shortcut-key">3</span><span>Need ${needed} more</span>`;
+            }
+        }
+    }
+
+    private updateMissionObjectives(): void {
+        const pm = this.game.progressionManager;
+
+        // Determine objectives based on current sector
+        let stationReq = 3;
+        let gunsReq = 3;
+        let defenseReq = 3;
+        let missionTitle = 'Advance to Nebula Field';
+
+        if (pm.currentSector === 2) {
+            stationReq = 5;
+            gunsReq = 5;
+            defenseReq = 5;
+            missionTitle = 'Advance to Asteroid Belt';
+        } else if (pm.currentSector === 3) {
+            stationReq = 7;
+            gunsReq = 7;
+            defenseReq = 7;
+            missionTitle = 'Advance to Alien Territory';
+        } else if (pm.currentSector === 4) {
+            stationReq = 10;
+            gunsReq = 10;
+            defenseReq = 10;
+            missionTitle = 'Achieve Maximum Power';
+        }
+
+        // Update mission title
+        this.updateElement('mission-title', missionTitle);
+
+        // Update objective items
+        this.updateObjectiveItem('obj-station', `Station Level: ${pm.stationLevel}/${stationReq}`, pm.stationLevel >= stationReq);
+        this.updateObjectiveItem('obj-guns', `Station Guns: ${pm.defenseLevel}/${defenseReq}`, pm.defenseLevel >= defenseReq);
+        this.updateObjectiveItem('obj-ship', `Ship Guns: ${pm.shipGunsLevel}/${gunsReq}`, pm.shipGunsLevel >= gunsReq);
+    }
+
+    private updateObjectiveItem(id: string, text: string, completed: boolean): void {
+        const element = document.getElementById(id);
+        if (element) {
+            if (completed) {
+                element.classList.add('completed');
+                element.innerHTML = `✓ ${text}`;
+            } else {
+                element.classList.remove('completed');
+                element.innerHTML = `○ ${text}`;
             }
         }
     }
@@ -78,21 +285,6 @@ export class UIManager {
         const element = document.getElementById(id);
         if (element) {
             element.textContent = value.toString();
-        }
-    }
-
-    private updateButtonState(id: string, enabled: boolean): void {
-        const button = document.getElementById(id) as HTMLButtonElement;
-        if (button) {
-            button.disabled = !enabled;
-        }
-    }
-
-    public toggleUpgradeMenu(): void {
-        this.upgradeMenuVisible = !this.upgradeMenuVisible;
-        const menu = document.getElementById('upgrade-menu');
-        if (menu) {
-            menu.style.display = this.upgradeMenuVisible ? 'block' : 'none';
         }
     }
 }

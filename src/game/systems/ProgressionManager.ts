@@ -1,4 +1,5 @@
 import { Game } from '../Game';
+import { WeaponSystem } from './WeaponSystem';
 
 export class ProgressionManager {
     private game: Game;
@@ -6,15 +7,14 @@ export class ProgressionManager {
     public resources: number = 100; // Start with some resources
     public currentSector: number = 1;
 
-    // Upgrade costs
-    private shipGunsCost: number = 50;
+    // Station and defense costs (still use old system)
     private stationCost: number = 100;
     private defenseCost: number = 75;
 
     // Upgrade levels
     public shipGunsLevel: number = 1;
-    public stationLevel: number = 1;
-    public defenseLevel: number = 1;
+    public stationLevel: number = 0;
+    public defenseLevel: number = 0;
 
     private sectorThemes = [
         { name: 'Frontier Space', color: [0, 0, 0.05] },
@@ -28,21 +28,25 @@ export class ProgressionManager {
     }
 
     public update(): void {
-        // Collect resources from asteroid manager
+        // Get player's current weapon multiplier
+        const weaponMultiplier = this.game.player.resourceMultiplier;
+
+        // Collect resources from asteroid manager (apply weapon multiplier)
         const asteroidResources = this.game.asteroidManager.getCollectedResources();
-        this.resources += asteroidResources;
+        this.resources += Math.floor(asteroidResources * weaponMultiplier);
 
         // Collect resources from station generation
         const stationResources = this.game.station.getCollectedResources();
         this.resources += stationResources;
 
-        // Collect resources from destroyed enemies
+        // Collect resources from destroyed enemies (apply weapon multiplier)
         const enemyResources = this.game.enemyManager.getCollectedResources();
-        this.resources += enemyResources;
+        this.resources += Math.floor(enemyResources * weaponMultiplier);
     }
 
     public canUpgradeShipGuns(): boolean {
-        return this.resources >= this.shipGunsCost;
+        if (this.shipGunsLevel >= 10) return false; // Max level
+        return this.resources >= this.getShipGunsCost();
     }
 
     public canUpgradeStation(): boolean {
@@ -56,10 +60,10 @@ export class ProgressionManager {
     public upgradeShipGuns(): boolean {
         if (!this.canUpgradeShipGuns()) return false;
 
-        this.resources -= this.shipGunsCost;
+        const cost = this.getShipGunsCost();
+        this.resources -= cost;
         this.shipGunsLevel++;
         this.game.player.upgradeWeapons();
-        this.shipGunsCost = Math.floor(this.shipGunsCost * 1.5);
 
         return true;
     }
@@ -139,7 +143,7 @@ export class ProgressionManager {
     }
 
     public getShipGunsCost(): number {
-        return this.shipGunsCost;
+        return WeaponSystem.calculateUpgradeCost(this.shipGunsLevel + 1);
     }
 
     public getStationCost(): number {
@@ -148,5 +152,11 @@ export class ProgressionManager {
 
     public getDefenseCost(): number {
         return this.defenseCost;
+    }
+
+    // Debug methods
+    public addResources(amount: number): void {
+        this.resources += amount;
+        console.log(`[DEBUG] Added ${amount} resources. Total: ${this.resources}`);
     }
 }

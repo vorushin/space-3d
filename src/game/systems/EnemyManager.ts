@@ -1,4 +1,4 @@
-import { Scene, Vector3, Color4 } from '@babylonjs/core';
+import { Scene, Vector3, Color4, Color3 } from '@babylonjs/core';
 import { Enemy } from '../entities/Enemy';
 import { EnemyResourceFragment } from '../entities/EnemyResourceFragment';
 import { Player } from '../entities/Player';
@@ -138,6 +138,24 @@ export class EnemyManager {
             if (distance < 2) {
                 enemy.takeDamage(projectile.damage, projectile.color);
                 projectile.isAlive = false;
+
+                // Apply splash damage if projectile has it
+                if (projectile.splashRadius > 0) {
+                    this.applySplashDamage(projectile.position, projectile.splashRadius, projectile.damage, projectile.color);
+                }
+            }
+        }
+    }
+
+    private applySplashDamage(position: Vector3, radius: number, damage: number, color: Color3): void {
+        // Check all enemies for splash damage
+        for (const enemy of this.enemies) {
+            if (!enemy.isAlive) continue;
+
+            const distance = Vector3.Distance(position, enemy.position);
+            if (distance < radius + 2) { // +2 for enemy size
+                // Apply splash damage (don't trigger more splashes)
+                enemy.takeDamage(damage, color);
             }
         }
     }

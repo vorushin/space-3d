@@ -152,6 +152,24 @@ export class AsteroidManager {
             if (distance < 2.5) {
                 asteroid.takeDamage(projectile.damage, projectile.color);
                 projectile.isAlive = false;
+
+                // Apply splash damage if projectile has it
+                if (projectile.splashRadius > 0) {
+                    this.applySplashDamage(projectile.position, projectile.splashRadius, projectile.damage, projectile.color);
+                }
+            }
+        }
+    }
+
+    private applySplashDamage(position: Vector3, radius: number, damage: number, color: Color3): void {
+        // Check all asteroids for splash damage
+        for (const asteroid of this.asteroids) {
+            if (!asteroid.isAlive) continue;
+
+            const distance = Vector3.Distance(position, asteroid.position);
+            if (distance < radius + asteroid.getCollisionRadius()) {
+                // Apply splash damage (don't trigger more splashes)
+                asteroid.takeDamage(damage, color);
             }
         }
     }
