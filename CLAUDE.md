@@ -135,3 +135,4 @@ shipRoot.getChildMeshes().forEach(child => {
 
 - PascalCase for classes and files: `EnemyManager.ts`, `ResourceFragment.ts`
 - Entity files go in `entities/`, system files in `systems/`, effects in `effects/`
+- don't start the dev server - I do it myself
