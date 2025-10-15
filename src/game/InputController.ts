@@ -53,6 +53,11 @@ export class InputController {
                 this.mouseDown = true;
                 this.player.startShooting();
             }
+            // Right click fires missile
+            if (e.button === 2) {
+                e.preventDefault();
+                this.missileManager.fireMissile();
+            }
         });
 
         canvas?.addEventListener('mouseup', (e) => {
@@ -60,6 +65,11 @@ export class InputController {
                 this.mouseDown = false;
                 this.player.stopShooting();
             }
+        });
+
+        // Prevent context menu on right click
+        canvas?.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
         });
 
         // Lock pointer on click
