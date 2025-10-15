@@ -24,6 +24,10 @@ export class Player {
     private weaponConfig: WeaponConfig;
     public resourceMultiplier: number = 1.0;
 
+    // Burst fire system
+    private burstShotsRemaining: number = 0;
+    private burstCooldown: number = 0;
+
     constructor(scene: Scene, position: Vector3, camera: Camera) {
         this.scene = scene;
         this.position = position.clone();
@@ -61,10 +65,24 @@ export class Player {
     public update(deltaTime: number): void {
         this.handleMovement(deltaTime);
         this.shootCooldown = Math.max(0, this.shootCooldown - deltaTime);
+        this.burstCooldown = Math.max(0, this.burstCooldown - deltaTime);
 
-        if (this.isShooting && this.shootCooldown <= 0 && this.weaponLevel > 0) {
-            this.shoot();
+        // Handle burst firing
+        if (this.burstShotsRemaining > 0 && this.burstCooldown <= 0) {
+            this.fireSingleShot();
+            this.burstShotsRemaining--;
+            this.burstCooldown = this.weaponConfig.burstDelay;
+        }
+        // Start new burst if shooting and cooldown expired
+        else if (this.isShooting && this.shootCooldown <= 0 && this.weaponLevel > 0 && this.burstShotsRemaining === 0) {
+            // Start burst
+            this.burstShotsRemaining = this.weaponConfig.burstCount;
             this.shootCooldown = this.weaponConfig.fireRate;
+
+            // Fire first shot immediately
+            this.fireSingleShot();
+            this.burstShotsRemaining--;
+            this.burstCooldown = this.weaponConfig.burstDelay;
         }
 
         // Update projectiles
@@ -105,52 +123,37 @@ export class Player {
         this.position = this.camera.position.clone();
     }
 
-    private shoot(): void {
+    private fireSingleShot(): void {
         const forward = this.camera.getDirection(Vector3.Forward());
-        const right = this.camera.getDirection(Vector3.Right());
         const up = this.camera.getDirection(Vector3.Up());
+        const right = this.camera.getDirection(Vector3.Right());
         const spawnOffset = forward.scale(2);
         const spawnPosition = this.camera.position.add(spawnOffset);
 
-        const bulletCount = this.weaponConfig.bulletCount;
-        const spreadAngle = this.weaponConfig.spreadAngle;
+        // Very small random spread for accuracy
+        const horizontalSpread = (Math.random() - 0.5) * this.weaponConfig.spreadAngle;
+        const verticalSpread = (Math.random() - 0.5) * this.weaponConfig.spreadAngle;
 
-        // Create multiple bullets in spread pattern
-        for (let i = 0; i < bulletCount; i++) {
-            // Calculate spread offset for this bullet
-            let angleOffset = 0;
-            if (bulletCount > 1) {
-                // Center the spread around the forward direction
-                const spreadIndex = i - (bulletCount - 1) / 2;
-                angleOffset = spreadIndex * spreadAngle;
-            }
+        const direction = forward
+            .add(right.scale(horizontalSpread))
+            .add(up.scale(verticalSpread))
+            .normalize();
 
-            // Apply spread in a horizontal arc (rotate around up axis)
-            const cosAngle = Math.cos(angleOffset);
-            const sinAngle = Math.sin(angleOffset);
+        const projectile = new Projectile(
+            this.scene,
+            spawnPosition,
+            direction,
+            this.weaponConfig.bulletSpeed,
+            this.weaponConfig.damage,
+            'player',
+            this.weaponConfig.color,
+            this.weaponConfig.bulletSize,
+            this.weaponConfig.lifetime,
+            this.weaponConfig.splashRadius,
+            this.weaponConfig.penetration
+        );
 
-            const spreadForward = forward.scale(cosAngle).add(right.scale(sinAngle));
-            const direction = spreadForward.normalize();
-
-            // Add vertical spread for 3D (smaller)
-            const verticalSpread = (Math.random() - 0.5) * 0.03;
-            const finalDirection = direction.add(up.scale(verticalSpread)).normalize();
-
-            const projectile = new Projectile(
-                this.scene,
-                spawnPosition,
-                finalDirection,
-                this.weaponConfig.bulletSpeed,
-                this.weaponConfig.damage,
-                'player',
-                this.weaponConfig.color,
-                this.weaponConfig.bulletSize,
-                this.weaponConfig.lifetime,
-                this.weaponConfig.splashRadius
-            );
-
-            this.projectiles.push(projectile);
-        }
+        this.projectiles.push(projectile);
     }
 
     public startShooting(): void {

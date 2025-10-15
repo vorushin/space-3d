@@ -151,7 +151,17 @@ export class AsteroidManager {
 
             if (distance < 2.5) {
                 asteroid.takeDamage(projectile.damage, projectile.color);
-                projectile.isAlive = false;
+
+                // Handle penetration
+                if (projectile.penetration > 0) {
+                    projectile.penetrationCount++;
+                    // Only destroy if exceeded penetration limit
+                    if (projectile.penetrationCount > projectile.penetration) {
+                        projectile.isAlive = false;
+                    }
+                } else {
+                    projectile.isAlive = false;
+                }
 
                 // Apply splash damage if projectile has it
                 if (projectile.splashRadius > 0) {

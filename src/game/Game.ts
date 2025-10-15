@@ -4,6 +4,7 @@ import { Player } from './entities/Player';
 import { Station } from './entities/Station';
 import { AsteroidManager } from './systems/AsteroidManager';
 import { EnemyManager } from './systems/EnemyManager';
+import { MissileManager } from './systems/MissileManager';
 import { ProgressionManager } from './systems/ProgressionManager';
 import { UIManager } from './systems/UIManager';
 import { ExplosionEffect } from './effects/ExplosionEffect';
@@ -18,6 +19,7 @@ export class Game {
     public station: Station;
     public asteroidManager: AsteroidManager;
     public enemyManager: EnemyManager;
+    public missileManager: MissileManager;
     public progressionManager: ProgressionManager;
     public uiManager: UIManager;
     public explosionEffect: ExplosionEffect;
@@ -40,10 +42,11 @@ export class Game {
         this.player.setExplosionEffect(this.explosionEffect);
         this.asteroidManager = new AsteroidManager(this.scene, this.explosionEffect);
         this.enemyManager = new EnemyManager(this.scene, this.player, this.station, this.explosionEffect);
+        this.missileManager = new MissileManager(this.scene, this.player, this.explosionEffect);
         this.progressionManager = new ProgressionManager(this);
         this.uiManager = new UIManager(this);
 
-        this.inputController = new InputController(this.scene, this.player, this.camera, this.uiManager);
+        this.inputController = new InputController(this.scene, this.player, this.camera, this.uiManager, this.missileManager);
 
         // Start game loop
         this.scene.onBeforeRenderObservable.add(() => {
@@ -54,7 +57,7 @@ export class Game {
             this.update(deltaTime);
         });
 
-        console.log('Game initialized! Controls: WASD (lateral), Q/E (vertical), Mouse (look), LMB (shoot), TAB (upgrades)');
+        console.log('Game initialized! Controls: WASD (lateral), Q/E (vertical), Mouse (look), LMB (shoot), SPACE (missile), TAB (upgrades)');
     }
 
     private setupCamera(): void {
@@ -80,6 +83,8 @@ export class Game {
         this.station.update(deltaTime);
         this.asteroidManager.update(deltaTime, this.player, this.station, this.enemyManager.enemies);
         this.enemyManager.update(deltaTime, this.progressionManager.getDefensiveStrength());
+        this.missileManager.update(deltaTime, this.enemyManager.enemies);
+        this.missileManager.checkCollisions(this.enemyManager.enemies);
         this.progressionManager.update();
         this.uiManager.update();
     }

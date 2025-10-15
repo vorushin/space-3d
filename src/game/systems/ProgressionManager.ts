@@ -57,6 +57,21 @@ export class ProgressionManager {
         return this.resources >= this.defenseCost;
     }
 
+    public canPurchaseMissiles(): boolean {
+        const cost = this.game.missileManager.getMissilePackCost();
+        return this.resources >= cost;
+    }
+
+    public purchaseMissiles(): boolean {
+        if (!this.canPurchaseMissiles()) return false;
+
+        const cost = this.game.missileManager.getMissilePackCost();
+        this.resources -= cost;
+        this.game.missileManager.purchaseMissilePack();
+
+        return true;
+    }
+
     public upgradeShipGuns(): boolean {
         if (!this.canUpgradeShipGuns()) return false;
 

@@ -29,6 +29,12 @@ export class UIManager {
             this.game.progressionManager.upgradeDefense();
         });
 
+        // Buy missiles
+        const missilesBtn = document.getElementById('buy-missiles-btn');
+        missilesBtn?.addEventListener('click', () => {
+            this.game.progressionManager.purchaseMissiles();
+        });
+
         // Debug: Add resources
         const debugAddResourcesBtn = document.getElementById('debug-add-resources');
         debugAddResourcesBtn?.addEventListener('click', () => {
@@ -38,13 +44,15 @@ export class UIManager {
 
     private setupKeyboardShortcuts(): void {
         window.addEventListener('keydown', (e) => {
-            // Keyboard shortcuts: 1, 2, 3 for upgrades
+            // Keyboard shortcuts: 1, 2, 3, 4 for upgrades
             if (e.key === '1' && this.game.progressionManager.canUpgradeShipGuns()) {
                 this.game.progressionManager.upgradeShipGuns();
             } else if (e.key === '2' && this.game.progressionManager.canUpgradeStation()) {
                 this.game.progressionManager.upgradeStation();
             } else if (e.key === '3' && this.game.progressionManager.canUpgradeDefense() && this.game.progressionManager.stationLevel > 0) {
                 this.game.progressionManager.upgradeDefense();
+            } else if (e.key === '4' && this.game.progressionManager.canPurchaseMissiles()) {
+                this.game.progressionManager.purchaseMissiles();
             }
             // Debug shortcuts
             else if (e.key === 'r' || e.key === 'R') {
@@ -61,6 +69,7 @@ export class UIManager {
         this.updateElement('resources', pm.resources);
         this.updateElement('enemies', this.game.enemyManager.enemies.length);
         this.updateElement('station-health', Math.round(this.game.station.health));
+        this.updateElement('missile-count', this.game.missileManager.getMissileCount());
 
         // Update large resource counter
         this.updateElement('resources-large', pm.resources);
@@ -73,6 +82,7 @@ export class UIManager {
         this.updateShipWeaponsPanel();
         this.updateStationPanel();
         this.updateDefensePanel();
+        this.updateMissilesPanel();
         this.updateMissionObjectives();
     }
 
@@ -229,6 +239,46 @@ export class UIManager {
                 button.classList.remove('ready');
                 const needed = cost - currentResources;
                 button.innerHTML = `<span class="shortcut-key">3</span><span>Need ${needed} more</span>`;
+            }
+        }
+    }
+
+    private updateMissilesPanel(): void {
+        const pm = this.game.progressionManager;
+        const missileCount = this.game.missileManager.getMissileCount();
+        const cost = this.game.missileManager.getMissilePackCost();
+        const packSize = this.game.missileManager.getMissilePackSize();
+
+        // Update missile count in panel
+        this.updateElement('missile-count-panel', missileCount);
+
+        // Calculate progress
+        const currentResources = pm.resources;
+        const progress = Math.min(100, (currentResources / cost) * 100);
+
+        // Update progress bar
+        const progressBar = document.getElementById('missile-progress');
+        if (progressBar) {
+            progressBar.style.width = `${progress}%`;
+        }
+
+        // Update progress text
+        this.updateElement('missile-progress-text', `${currentResources} / ${cost}`);
+
+        // Update button state
+        const button = document.getElementById('buy-missiles-btn') as HTMLButtonElement;
+        const buttonText = document.getElementById('missile-btn-text');
+
+        if (button && buttonText) {
+            if (pm.canPurchaseMissiles()) {
+                button.disabled = false;
+                button.classList.add('ready');
+                buttonText.textContent = `Buy ${packSize} Pack`;
+            } else {
+                button.disabled = true;
+                button.classList.remove('ready');
+                const needed = cost - currentResources;
+                buttonText.textContent = `Need ${needed} more`;
             }
         }
     }

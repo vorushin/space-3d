@@ -10,6 +10,8 @@ export class Projectile {
     public owner: string; // 'player', 'enemy', or 'turret'
     public color: Color3; // Color of the projectile
     public splashRadius: number = 0; // Splash damage radius
+    public penetration: number = 0; // Number of targets it can pass through
+    public penetrationCount: number = 0; // Targets already penetrated
 
     private lifetime: number = 5; // seconds
     private age: number = 0;
@@ -25,7 +27,8 @@ export class Projectile {
         color?: Color3,
         size?: number,
         lifetime?: number,
-        splashRadius?: number
+        splashRadius?: number,
+        penetration?: number
     ) {
         this.scene = scene;
         this.position = position.clone();
@@ -35,6 +38,7 @@ export class Projectile {
         this.size = size || 0.3;
         this.lifetime = lifetime || 5;
         this.splashRadius = splashRadius || 0;
+        this.penetration = penetration || 0;
 
         // Use provided color or default based on owner
         if (color) {

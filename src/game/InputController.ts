@@ -1,21 +1,24 @@
 import { Scene, Camera } from '@babylonjs/core';
 import { Player } from './entities/Player';
 import { UIManager } from './systems/UIManager';
+import { MissileManager } from './systems/MissileManager';
 
 export class InputController {
     private scene: Scene;
     private player: Player;
     private camera: Camera;
     private uiManager: UIManager;
+    private missileManager: MissileManager;
 
     public keys: { [key: string]: boolean } = {};
     public mouseDown: boolean = false;
 
-    constructor(scene: Scene, player: Player, camera: Camera, uiManager: UIManager) {
+    constructor(scene: Scene, player: Player, camera: Camera, uiManager: UIManager, missileManager: MissileManager) {
         this.scene = scene;
         this.player = player;
         this.camera = camera;
         this.uiManager = uiManager;
+        this.missileManager = missileManager;
 
         this.setupKeyboardInput();
         this.setupMouseInput();
@@ -28,6 +31,12 @@ export class InputController {
             if (e.key.toLowerCase() === 'tab') {
                 e.preventDefault();
                 this.uiManager.toggleUpgradeMenu();
+            }
+
+            // Fire missile on SPACE key
+            if (e.key === ' ' || e.code === 'Space') {
+                e.preventDefault();
+                this.missileManager.fireMissile();
             }
         });
 
