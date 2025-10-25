@@ -85,6 +85,13 @@ export class Game {
         this.enemyManager.update(deltaTime, this.progressionManager.getDefensiveStrength());
         this.missileManager.update(deltaTime, this.enemyManager.enemies);
         this.missileManager.checkCollisions(this.enemyManager.enemies);
+
+        // Check missile-asteroid collisions and add blue fragments
+        const blueFragments = this.missileManager.checkAsteroidCollisions(this.asteroidManager.asteroids);
+        if (blueFragments.length > 0) {
+            this.asteroidManager.fragments.push(...blueFragments);
+        }
+
         this.progressionManager.update();
         this.uiManager.update();
     }

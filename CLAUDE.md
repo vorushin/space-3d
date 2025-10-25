@@ -38,7 +38,7 @@ The `Game` class (`src/game/Game.ts`) is the central coordinator that:
 
 **Entities** (`src/game/entities/`): Individual game objects with their own state, mesh, and behavior
 - `Player.ts` - Player ship (cyan), controlled by camera, shoots projectiles based on weapon level
-- `Enemy.ts` - Four types (scout/fighter/heavy/destroyer) with different colors, shoot red projectiles
+- `Enemy.ts` - Eight types (scout/fighter/heavy/destroyer/cruiser/battleship/dreadnought/titan) with progressive sizes and colors
 - `Station.ts` - Central base at (0,0,0), has upgradeable turrets and modules
 - `Asteroid.ts` - Three sizes (large→medium→small), split when hit, eventually break into ResourceFragments
 - `Projectile.ts` - Bullets with `owner`, `color`, `penetration`, and `splashRadius` properties

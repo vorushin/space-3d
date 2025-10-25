@@ -1,5 +1,5 @@
 import { Scene, Vector3, Color4, Color3 } from '@babylonjs/core';
-import { Enemy } from '../entities/Enemy';
+import { Enemy, EnemyType } from '../entities/Enemy';
 import { EnemyResourceFragment } from '../entities/EnemyResourceFragment';
 import { Player } from '../entities/Player';
 import { Station } from '../entities/Station';
@@ -58,15 +58,48 @@ export class EnemyManager {
                 const color = enemy.getColor();
                 const color4 = new Color4(color.r, color.g, color.b, 1);
 
-                if (enemy.type === 'destroyer') {
+                // Scale explosions based on ship type
+                if (enemy.type === 'scout') {
+                    this.explosionEffect.createExplosion(enemy.position, color4, 0.7);
+                } else if (enemy.type === 'fighter') {
+                    this.explosionEffect.createExplosion(enemy.position, color4, 1.0);
+                } else if (enemy.type === 'heavy') {
+                    this.explosionEffect.createExplosion(enemy.position, color4, 1.5);
+                } else if (enemy.type === 'destroyer') {
                     this.explosionEffect.createLargeExplosion(enemy.position, color4);
-                } else {
-                    // Scout, fighter, heavy use regular explosion with size scaling
-                    let size = 1;
-                    if (enemy.type === 'scout') size = 0.7;
-                    else if (enemy.type === 'fighter') size = 1.0;
-                    else if (enemy.type === 'heavy') size = 1.5;
-                    this.explosionEffect.createExplosion(enemy.position, color4, size);
+                } else if (enemy.type === 'cruiser') {
+                    // Large explosion for cruiser
+                    this.explosionEffect.createLargeExplosion(enemy.position, color4);
+                } else if (enemy.type === 'battleship') {
+                    // Multiple large explosions for battleship
+                    this.explosionEffect.createLargeExplosion(enemy.position, color4);
+                    setTimeout(() => {
+                        this.explosionEffect.createExplosion(enemy.position, color4, 2.5);
+                    }, 100);
+                } else if (enemy.type === 'dreadnought') {
+                    // Massive multi-stage explosion for dreadnought
+                    this.explosionEffect.createLargeExplosion(enemy.position, color4);
+                    setTimeout(() => {
+                        this.explosionEffect.createLargeExplosion(enemy.position, color4);
+                    }, 150);
+                    setTimeout(() => {
+                        this.explosionEffect.createExplosion(enemy.position, color4, 3.0);
+                    }, 300);
+                } else if (enemy.type === 'titan') {
+                    // Apocalyptic explosion sequence for titan
+                    this.explosionEffect.createLargeExplosion(enemy.position, color4);
+                    setTimeout(() => {
+                        this.explosionEffect.createLargeExplosion(enemy.position, color4);
+                    }, 100);
+                    setTimeout(() => {
+                        this.explosionEffect.createLargeExplosion(enemy.position, color4);
+                    }, 200);
+                    setTimeout(() => {
+                        this.explosionEffect.createExplosion(enemy.position, color4, 4.0);
+                    }, 350);
+                    setTimeout(() => {
+                        this.explosionEffect.createExplosion(enemy.position, color4, 3.5);
+                    }, 500);
                 }
 
                 // Create resource fragments
@@ -135,7 +168,15 @@ export class EnemyManager {
 
             const distance = Vector3.Distance(enemy.position, projectile.position);
 
-            if (distance < 2) {
+            // Calculate collision radius based on enemy ship size
+            // Enemy ships have complex meshes that extend beyond center point
+            // Scout: ~2.5 units, Fighter: ~3.5 units, Heavy: ~5 units, Destroyer: ~7 units
+            const enemySize = enemy.getSize();
+            const enemyCollisionRadius = enemySize * 2.5; // Approximate collision radius
+            const projectileRadius = 0.5; // Small buffer for projectile
+            const collisionThreshold = enemyCollisionRadius + projectileRadius;
+
+            if (distance < collisionThreshold) {
                 enemy.takeDamage(projectile.damage, projectile.color);
 
                 // Handle penetration
@@ -163,7 +204,11 @@ export class EnemyManager {
             if (!enemy.isAlive) continue;
 
             const distance = Vector3.Distance(position, enemy.position);
-            if (distance < radius + 2) { // +2 for enemy size
+            // Use proper enemy size for splash radius calculation
+            const enemySize = enemy.getSize();
+            const enemyCollisionRadius = enemySize * 2.5;
+
+            if (distance < radius + enemyCollisionRadius) {
                 // Apply splash damage (don't trigger more splashes)
                 enemy.takeDamage(damage, color);
             }
@@ -181,6 +226,12 @@ export class EnemyManager {
         );
 
         const enemy = new Enemy(this.scene, position, this.player, this.station, this.explosionEffect, this.difficulty);
+        this.enemies.push(enemy);
+    }
+
+    // Debug method: Spawn a specific enemy type at a given position
+    public spawnEnemyOfType(position: Vector3, type: EnemyType): void {
+        const enemy = new Enemy(this.scene, position, this.player, this.station, this.explosionEffect, this.difficulty, type);
         this.enemies.push(enemy);
     }
 

@@ -58,46 +58,55 @@ export class ExplosionEffect {
 
     // Medium explosion for ship destruction
     public createExplosion(position: Vector3, color: Color4, size: number = 1): void {
-        const particleSystem = new ParticleSystem('explosion', 150 * size, this.scene);
+        // Create mesh-based explosion particles (more visible than texture-based)
+        const particleCount = Math.floor(15 * Math.min(size, 2)); // Cap particles for performance
 
-        particleSystem.particleTexture = null;
+        for (let i = 0; i < particleCount; i++) {
+            const particle = MeshBuilder.CreateSphere(`explosion_${Date.now()}_${i}`, {
+                diameter: 0.4 * size + Math.random() * 0.6 * size
+            }, this.scene);
 
-        particleSystem.emitter = position;
-        particleSystem.minEmitBox = new Vector3(-0.5 * size, -0.5 * size, -0.5 * size);
-        particleSystem.maxEmitBox = new Vector3(0.5 * size, 0.5 * size, 0.5 * size);
+            particle.position = position.clone();
 
-        // Colors - bright flash to dark
-        particleSystem.color1 = new Color4(1, 1, 0.8, 1); // Bright yellow-white
-        particleSystem.color2 = color;
-        particleSystem.colorDead = new Color4(0.1, 0.1, 0.1, 0);
+            // Create bright emissive material with explosion color
+            const material = new StandardMaterial(`explosionMat_${Date.now()}_${i}`, this.scene);
+            material.emissiveColor = new Color3(color.r, color.g, color.b);
+            material.disableLighting = true;
+            particle.material = material;
 
-        // Size
-        particleSystem.minSize = 0.3 * size;
-        particleSystem.maxSize = 1.2 * size;
+            // Random explosive velocity (outward burst)
+            const velocity = new Vector3(
+                (Math.random() - 0.5) * 30 * size,
+                (Math.random() - 0.5) * 30 * size,
+                (Math.random() - 0.5) * 30 * size
+            );
 
-        // Life time
-        particleSystem.minLifeTime = 0.3;
-        particleSystem.maxLifeTime = 0.8;
+            // Animate
+            let life = 0;
+            const maxLife = 0.5 + Math.random() * 0.3;
+            const observer = this.scene.onBeforeRenderObservable.add(() => {
+                const deltaTime = this.scene.getEngine().getDeltaTime() / 1000;
+                life += deltaTime;
 
-        // Emission
-        particleSystem.emitRate = 500;
-        particleSystem.manualEmitCount = Math.floor(150 * size);
-
-        // Speed - explosive outward burst
-        particleSystem.minEmitPower = 10 * size;
-        particleSystem.maxEmitPower = 20 * size;
-        particleSystem.updateSpeed = 0.01;
-
-        // Gravity effect
-        particleSystem.gravity = new Vector3(0, -2, 0);
-
-        // Start and stop
-        particleSystem.start();
-
-        setTimeout(() => {
-            particleSystem.stop();
-            setTimeout(() => particleSystem.dispose(), 1000);
-        }, 100);
+                if (life < maxLife) {
+                    // Move particle
+                    particle.position.addInPlace(velocity.scale(deltaTime));
+                    // Fade out and shrink
+                    const progress = life / maxLife;
+                    const scale = 1 - progress;
+                    particle.scaling.setAll(scale);
+                    // Dim the color
+                    material.emissiveColor = new Color3(
+                        color.r * (1 - progress * 0.7),
+                        color.g * (1 - progress * 0.7),
+                        color.b * (1 - progress * 0.7)
+                    );
+                } else {
+                    this.scene.onBeforeRenderObservable.remove(observer);
+                    particle.dispose();
+                }
+            });
+        }
     }
 
     // Large explosion for capital ships

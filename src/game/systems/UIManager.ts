@@ -40,6 +40,40 @@ export class UIManager {
         debugAddResourcesBtn?.addEventListener('click', () => {
             this.game.progressionManager.addResources(1000);
         });
+
+        // Debug: Spawn all enemy types
+        const debugSpawnEnemiesBtn = document.getElementById('debug-spawn-enemies');
+        debugSpawnEnemiesBtn?.addEventListener('click', () => {
+            this.spawnDebugEnemies();
+        });
+    }
+
+    private spawnDebugEnemies(): void {
+        // Access the enemy manager to spawn enemies
+        if (this.game && this.game.enemyManager) {
+            const enemyTypes: Array<'scout' | 'fighter' | 'heavy' | 'destroyer' | 'cruiser' | 'battleship' | 'dreadnought' | 'titan'> =
+                ['scout', 'fighter', 'heavy', 'destroyer', 'cruiser', 'battleship', 'dreadnought', 'titan'];
+
+            const stationPos = { x: 0, y: 0, z: 0 }; // Station is at origin
+            const radius = 40; // Spawn distance from station
+
+            enemyTypes.forEach((type, index) => {
+                // Arrange enemies in a circle around the station
+                const angle = (index / enemyTypes.length) * Math.PI * 2;
+                const spawnPos = {
+                    x: Math.cos(angle) * radius,
+                    y: 0,
+                    z: Math.sin(angle) * radius
+                };
+
+                // Spawn enemy of specific type
+                const Vector3 = (window as any).BABYLON.Vector3;
+                const position = new Vector3(spawnPos.x, spawnPos.y, spawnPos.z);
+                this.game.enemyManager.spawnEnemyOfType(position, type);
+            });
+
+            console.log('Debug: Spawned one of each enemy type near station');
+        }
     }
 
     private setupKeyboardShortcuts(): void {
@@ -68,6 +102,10 @@ export class UIManager {
         this.updateElement('health', Math.round(this.game.player.health));
         this.updateElement('resources', pm.resources);
         this.updateElement('enemies', this.game.enemyManager.enemies.length);
+
+        // Update enemy breakdown by type
+        this.updateEnemyBreakdown();
+
         this.updateElement('station-health', Math.round(this.game.station.health));
         this.updateElement('missile-count', this.game.missileManager.getMissileCount());
 
@@ -328,6 +366,31 @@ export class UIManager {
                 element.classList.remove('completed');
                 element.innerHTML = `○ ${text}`;
             }
+        }
+    }
+
+    private updateEnemyBreakdown(): void {
+        const enemies = this.game.enemyManager.enemies;
+
+        // Count enemies by type
+        const counts: { [key: string]: number } = {};
+        for (const enemy of enemies) {
+            counts[enemy.type] = (counts[enemy.type] || 0) + 1;
+        }
+
+        // Build display string
+        const parts: string[] = [];
+        const typeOrder = ['scout', 'fighter', 'heavy', 'destroyer', 'cruiser', 'battleship', 'dreadnought', 'titan'];
+
+        for (const type of typeOrder) {
+            if (counts[type]) {
+                parts.push(`${counts[type]} ${type}${counts[type] > 1 ? 's' : ''}`);
+            }
+        }
+
+        const element = document.getElementById('enemy-breakdown');
+        if (element) {
+            element.textContent = parts.length > 0 ? parts.join(', ') : '';
         }
     }
 

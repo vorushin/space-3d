@@ -1,4 +1,4 @@
-import { Scene, Mesh, MeshBuilder, Vector3, StandardMaterial, Color3, Color4, TransformNode } from '@babylonjs/core';
+import { Scene, Mesh, MeshBuilder, Vector3, StandardMaterial, Color3, Color4, TransformNode, DynamicTexture } from '@babylonjs/core';
 import { Turret } from './Turret';
 import { ExplosionEffect } from '../effects/ExplosionEffect';
 
@@ -18,6 +18,12 @@ export class Station {
     private resourceAccumulator: number = 0;
     public gravityRange: number = 0; // Range for resource attraction (0 = no gravity)
 
+    // Health bar
+    private healthBarMesh?: Mesh;
+    private healthBarVisible: boolean = false;
+    private healthBarHideTimer: number = 0;
+    private readonly HEALTH_BAR_DISPLAY_TIME = 3; // Show for 3 seconds after damage
+
     constructor(scene: Scene, position: Vector3, explosionEffect: ExplosionEffect) {
         this.scene = scene;
         this.position = position.clone();
@@ -27,6 +33,10 @@ export class Station {
         this.rootNode.position = position;
 
         this.createInitialModule();
+
+        // Create health bar (initially hidden)
+        this.healthBarMesh = this.createHealthBar();
+        this.healthBarMesh.setEnabled(false);
     }
 
     private createInitialModule(): void {
@@ -40,6 +50,64 @@ export class Station {
         core.material = material;
 
         this.modules.push(core);
+    }
+
+    private createHealthBar(): Mesh {
+        // Create a larger health bar for the station
+        const barWidth = 12;
+        const barHeight = 0.8;
+        const bar = MeshBuilder.CreatePlane('stationHealthBar', { width: barWidth, height: barHeight }, this.scene);
+
+        // Create dynamic texture for the health bar
+        const texture = new DynamicTexture('stationHealthBarTexture', { width: 512, height: 64 }, this.scene);
+        const material = new StandardMaterial('stationHealthBarMaterial', this.scene);
+        material.diffuseTexture = texture;
+        material.emissiveTexture = texture;
+        material.disableLighting = true;
+        material.backFaceCulling = false;
+
+        bar.material = material;
+        bar.billboardMode = Mesh.BILLBOARDMODE_ALL; // Always face camera
+
+        return bar;
+    }
+
+    private updateHealthBar(): void {
+        if (!this.healthBarMesh) return;
+
+        const healthPercent = Math.max(0, this.health / this.maxHealth);
+        const texture = (this.healthBarMesh.material as StandardMaterial).diffuseTexture as DynamicTexture;
+        const ctx = texture.getContext();
+
+        // Clear canvas
+        ctx.clearRect(0, 0, 512, 64);
+
+        // Background (dark)
+        ctx.fillStyle = '#202020';
+        ctx.fillRect(0, 0, 512, 64);
+
+        // Health bar (cyan/blue for station)
+        const b = Math.floor(200 + 55 * healthPercent);
+        const g = Math.floor(150 * healthPercent);
+        ctx.fillStyle = `rgb(100, ${g}, ${b})`;
+        ctx.fillRect(0, 0, 512 * healthPercent, 64);
+
+        // Border
+        ctx.strokeStyle = '#00FFFF';
+        ctx.lineWidth = 6;
+        ctx.strokeRect(3, 3, 506, 58);
+
+        // Station text
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 24px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('STATION', 256, 40);
+
+        texture.update();
+
+        // Position above station
+        const offsetY = 10;
+        this.healthBarMesh.position = this.position.add(new Vector3(0, offsetY, 0));
     }
 
     public update(deltaTime: number): void {
@@ -58,6 +126,17 @@ export class Station {
 
         // Slow rotation for visual effect
         this.rootNode.rotation.y += 0.1 * deltaTime;
+
+        // Update health bar visibility
+        if (this.healthBarVisible && this.healthBarMesh) {
+            this.healthBarHideTimer -= deltaTime;
+            if (this.healthBarHideTimer <= 0) {
+                this.healthBarVisible = false;
+                this.healthBarMesh.setEnabled(false);
+            } else {
+                this.updateHealthBar();
+            }
+        }
     }
 
     public upgrade(): void {
@@ -129,6 +208,17 @@ export class Station {
 
     public takeDamage(amount: number, weaponColor: Color3): void {
         this.health = Math.max(0, this.health - amount);
+
+        // Show health bar when damaged
+        if (this.healthBarMesh && !this.healthBarVisible) {
+            this.healthBarVisible = true;
+            this.healthBarMesh.setEnabled(true);
+        }
+        // Reset hide timer
+        this.healthBarHideTimer = this.HEALTH_BAR_DISPLAY_TIME;
+
+        // Update health bar immediately
+        this.updateHealthBar();
 
         // Create hit spark effect blending weapon color with station color (gray/white)
         const stationColor = new Color3(0.7, 0.7, 0.8);

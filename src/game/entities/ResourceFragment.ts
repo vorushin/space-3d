@@ -9,11 +9,11 @@ export class ResourceFragment {
     public isLost: boolean = false;
     public value: number = 1;
 
-    private playerGravityRange: number = 25; // Always active for player
+    private playerGravityRange: number = 50; // Increased from 25 - much wider range
     private stationGravityRange: number = 0; // Depends on station level
-    private playerGravityConstant: number = 500; // G * M for player (larger mass)
-    private stationGravityConstant: number = 800; // G * M for station (even larger mass)
-    private collectDistance: number = 2;
+    private playerGravityConstant: number = 2000; // Increased from 500 - much stronger pull
+    private stationGravityConstant: number = 3000; // Increased from 800 - much stronger pull
+    private collectDistance: number = 3; // Increased from 2 - easier to collect
     private gameAreaRadius: number = 300; // Boundary of playable area
 
     constructor(scene: Scene, position: Vector3) {

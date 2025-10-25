@@ -13,12 +13,14 @@ export class Missile {
     private explosionEffect: ExplosionEffect;
     public shouldExplode: boolean = false; // Flag to trigger explosion on removal
 
-    private speed: number = 350; // Units per second - increased for better interception
-    private turnRate: number = 6.0; // Radians per second - doubled for tighter turns
-    private lifetime: number = 4; // Increased to 4 seconds for longer pursuit
+    private speed: number = 117; // Units per second (350 / 3 for slower, more visible missiles)
+    private turnRate: number = 2.5; // Radians per second - more realistic turning
+    private lifetime: number = 6; // Extended lifetime for longer pursuit
     private age: number = 0;
-    private lockRange: number = 150; // Increased range to acquire targets further away
-    private trackingDelay: number = 0.2; // Reduced delay for faster tracking
+    private lockRange: number = 200; // Extended lock range
+    private maxLockAngle: number = Math.PI / 6; // 30 degrees cone - only lock targets player is aiming at
+    private trackingDelay: number = 0; // No delay - start tracking immediately
+    private targetLocked: boolean = false; // Once locked, stay locked unless target dies
     private color: Color3 = new Color3(1.0, 0.8, 0.2); // Orange-yellow
 
     // Shared material for all missiles (performance optimization)
@@ -27,7 +29,7 @@ export class Missile {
     constructor(scene: Scene, position: Vector3, initialDirection: Vector3, damage: number, explosionEffect: ExplosionEffect) {
         this.scene = scene;
         this.position = position.clone();
-        this.velocity = initialDirection.normalize().scale(this.speed);
+        this.velocity = initialDirection.normalizeToNew().scale(this.speed);
         this.damage = damage;
         this.explosionEffect = explosionEffect;
         this.mesh = this.createMissileMesh();
@@ -93,7 +95,7 @@ export class Missile {
         this.mesh.position = this.position;
 
         // Update rotation to face velocity direction
-        const direction = this.velocity.normalize();
+        const direction = this.velocity.normalizeToNew(); // Use normalizeToNew() to avoid modifying velocity!
         const targetPosition = this.position.add(direction);
         this.mesh.lookAt(targetPosition, 0, Math.PI / 2, 0);
 
@@ -106,16 +108,20 @@ export class Missile {
         if (this.target && this.target.isAlive) {
             this.trackTarget(deltaTime);
         } else if (this.target && !this.target.isAlive) {
-            // Target destroyed, try to acquire new target
+            // Target destroyed - acquire new target in same general direction
             this.target = null;
+            this.targetLocked = false;
             this.acquireTarget(enemies);
         }
     }
 
     private acquireTarget(enemies: Enemy[]): void {
+        // Lock onto the enemy most aligned with the missile's current direction
+        // This ensures the missile targets what the player was aiming at
         let bestEnemy: Enemy | null = null;
-        let bestScore = 0;
-        const missileDirection = this.velocity.normalize();
+        let bestAlignment = -1; // Track best dot product (ranges from -1 to 1)
+
+        const missileDirection = this.velocity.normalizeToNew();
 
         for (const enemy of enemies) {
             if (!enemy.isAlive) continue;
@@ -123,41 +129,42 @@ export class Missile {
             const toEnemy = enemy.position.subtract(this.position);
             const distance = toEnemy.length();
 
-            // Only consider enemies within lock range
+            // Skip enemies outside lock range
             if (distance > this.lockRange) continue;
 
-            // Check if enemy is in front hemisphere
-            const directionToEnemy = toEnemy.normalize();
-            const dotProduct = Vector3.Dot(missileDirection, directionToEnemy);
+            // Calculate alignment with missile direction
+            const directionToEnemy = toEnemy.normalizeToNew();
+            const alignment = Vector3.Dot(missileDirection, directionToEnemy);
 
-            if (dotProduct > 0) { // In front hemisphere
-                // Score based on both distance and alignment
-                // Closer enemies and enemies more aligned with missile direction score higher
-                const distanceScore = 1.0 - (distance / this.lockRange); // 0 to 1, higher is closer
-                const alignmentScore = dotProduct; // 0 to 1, higher is more aligned
+            // Calculate angle from dot product: angle = acos(dotProduct)
+            const angleToTarget = Math.acos(Math.max(-1, Math.min(1, alignment)));
 
-                // Weighted score - favor alignment slightly over distance
-                const score = (alignmentScore * 0.6) + (distanceScore * 0.4);
+            // Only consider targets within the lock cone (30 degrees on initial lock)
+            if (!this.targetLocked && angleToTarget > this.maxLockAngle) continue;
 
-                if (score > bestScore) {
-                    bestScore = score;
-                    bestEnemy = enemy;
-                }
+            // For reacquisition after target death, use wider cone (90 degrees)
+            if (this.targetLocked && angleToTarget > Math.PI / 2) continue;
+
+            // Choose the target MOST aligned with current direction
+            // This is what the player was aiming at when they fired
+            if (alignment > bestAlignment) {
+                bestAlignment = alignment;
+                bestEnemy = enemy;
             }
         }
 
-        this.target = bestEnemy;
+        if (bestEnemy) {
+            this.target = bestEnemy;
+            this.targetLocked = true;
+        }
     }
 
     private trackTarget(deltaTime: number): void {
         if (!this.target) return;
 
-        // Predictive targeting - aim where the target will be, not where it is
+        // Advanced predictive targeting using iterative intercept calculation
         const toTarget = this.target.position.subtract(this.position);
         const distance = toTarget.length();
-
-        // Estimate time to intercept
-        const timeToIntercept = distance / this.speed;
 
         // Get target velocity (if available)
         let targetVelocity = Vector3.Zero();
@@ -165,23 +172,57 @@ export class Missile {
             targetVelocity = (this.target as any).velocity;
         }
 
-        // Calculate predicted intercept position
-        const predictedPosition = this.target.position.add(targetVelocity.scale(timeToIntercept));
-        const toInterceptPoint = predictedPosition.subtract(this.position);
-        const desiredDirection = toInterceptPoint.normalize();
+        // Iterative intercept calculation (more accurate than simple prediction)
+        // This accounts for the missile's turning limitations
+        let interceptTime = distance / this.speed;
+        for (let i = 0; i < 3; i++) { // 3 iterations is usually enough
+            const predictedPos = this.target.position.add(targetVelocity.scale(interceptTime));
+            const newDistance = Vector3.Distance(this.position, predictedPos);
+            interceptTime = newDistance / this.speed;
+        }
+
+        // Calculate the intercept point
+        const interceptPoint = this.target.position.add(targetVelocity.scale(interceptTime));
+        const toInterceptPoint = interceptPoint.subtract(this.position);
+
+        // If target is very close or moving slowly, aim directly at it
+        const targetSpeed = targetVelocity.length();
+        const directAimThreshold = 5.0; // Within 5 units, aim directly
+        const desiredDirection = (distance < directAimThreshold || targetSpeed < 1.0)
+            ? toTarget.normalizeToNew()
+            : toInterceptPoint.normalizeToNew();
 
         // Current direction
-        const currentDirection = this.velocity.normalize();
+        const currentDirection = this.velocity.normalizeToNew();
 
-        // Calculate turn factor - more aggressive turning
-        const maxTurnSpeed = this.turnRate * deltaTime;
-        const turnFactor = Math.min(1.0, maxTurnSpeed * 2.0); // 2x multiplier for tighter tracking
+        // Calculate how much we can turn this frame
+        const maxTurnAngle = this.turnRate * deltaTime;
 
-        // Use lerp for smooth turning
-        const newDirection = Vector3.Lerp(currentDirection, desiredDirection, turnFactor);
+        // Calculate angle between current direction and desired direction
+        const dotProduct = Vector3.Dot(currentDirection, desiredDirection);
+        const angleToTarget = Math.acos(Math.max(-1, Math.min(1, dotProduct)));
 
-        // Normalize and apply speed
-        this.velocity = newDirection.normalize().scale(this.speed);
+        // Proportional navigation: turn rate increases when far from target direction
+        // This makes missiles more responsive when they need to turn sharply
+        const turnUrgency = Math.min(1.0, angleToTarget / (Math.PI / 4)); // 0 to 1 based on 45° reference
+        const adaptiveTurnRate = maxTurnAngle * (0.5 + 0.5 * turnUrgency); // 50% to 100% of max turn
+
+        // Calculate turn factor with adaptive turning
+        const turnFactor = Math.min(1.0, adaptiveTurnRate / Math.max(angleToTarget, 0.01));
+
+        // Use spherical linear interpolation for smooth, realistic turning
+        let newDirection = Vector3.Lerp(currentDirection, desiredDirection, turnFactor);
+
+        // Ensure newDirection is valid before normalizing
+        if (newDirection.lengthSquared() > 0.0001) {
+            newDirection = newDirection.normalize();
+        } else {
+            // Fallback to current direction if lerp resulted in near-zero vector
+            newDirection = currentDirection;
+        }
+
+        // Apply speed - always maintain constant speed
+        this.velocity = newDirection.scale(this.speed);
     }
 
     public getTarget(): Enemy | null {

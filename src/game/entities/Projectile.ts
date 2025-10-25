@@ -55,13 +55,24 @@ export class Projectile {
         const projectile = MeshBuilder.CreateSphere('projectile', { diameter: this.size * 2 }, this.scene);
 
         const material = new StandardMaterial('projectileMaterial', this.scene);
-        material.emissiveColor = this.color;
+        material.emissiveColor = this.color.scale(1.2); // Brighter glow
         material.diffuseColor = this.color;
         material.disableLighting = true; // Make it glow
+        material.specularColor = this.color;
 
-        // Add extra glow for white/bright bullets (singularity)
-        if (this.color.r > 0.9 && this.color.g > 0.9 && this.color.b > 0.9) {
+        // Extra intensity for large projectiles (heavy weapons)
+        if (this.size > 0.3) {
             material.emissiveColor = this.color.scale(1.5);
+        }
+
+        // Extreme glow for white/bright bullets (singularity, vortex)
+        if (this.color.r > 0.9 && this.color.g > 0.9 && this.color.b > 0.9) {
+            material.emissiveColor = this.color.scale(2.0);
+        }
+
+        // Extra glow for purple weapons (vortex, plasma)
+        if (this.color.r > 0.5 && this.color.b > 0.7 && this.color.g < 0.4) {
+            material.emissiveColor = this.color.scale(1.8);
         }
 
         projectile.material = material;

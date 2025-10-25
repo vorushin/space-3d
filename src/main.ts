@@ -1,5 +1,6 @@
-import { Engine, Scene, Vector3, Color4, PointsCloudSystem } from '@babylonjs/core';
+import { Engine, Scene, Vector3, Color4 } from '@babylonjs/core';
 import { Game } from './game/Game';
+import { BackgroundSystem } from './game/effects/BackgroundSystem';
 
 // Make game available globally for cross-system communication
 declare global {
@@ -36,50 +37,13 @@ class App {
 
     private createScene(): Scene {
         const scene = new Scene(this.engine);
-        scene.clearColor = new Color4(0, 0, 0.05, 1);
+        scene.clearColor = new Color4(0.02, 0.02, 0.08, 1); // Slightly lighter dark blue
 
-        // Create starfield background
-        this.createStarfield(scene);
+        // Create enhanced background with galaxies, nebulae, and colorful stars
+        const backgroundSystem = new BackgroundSystem(scene);
+        backgroundSystem.create();
 
         return scene;
-    }
-
-    private createStarfield(scene: Scene): void {
-        const starCount = 2000;
-        const positions: number[] = [];
-        const colors: number[] = [];
-
-        for (let i = 0; i < starCount; i++) {
-            const theta = Math.random() * Math.PI * 2;
-            const phi = Math.acos((Math.random() * 2) - 1);
-            const r = 500;
-
-            positions.push(
-                r * Math.sin(phi) * Math.cos(theta),
-                r * Math.sin(phi) * Math.sin(theta),
-                r * Math.cos(phi)
-            );
-
-            const brightness = 0.5 + Math.random() * 0.5;
-            colors.push(brightness, brightness, brightness, 1);
-        }
-
-        const starfield = new PointsCloudSystem('starfield', 1, scene);
-        starfield.addPoints(starCount, (particle, i) => {
-            particle.position = new Vector3(
-                positions[i * 3],
-                positions[i * 3 + 1],
-                positions[i * 3 + 2]
-            );
-            particle.color = new Color4(
-                colors[i * 4],
-                colors[i * 4 + 1],
-                colors[i * 4 + 2],
-                colors[i * 4 + 3]
-            );
-        });
-
-        starfield.buildMeshAsync();
     }
 }
 

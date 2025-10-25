@@ -1,7 +1,9 @@
-import { Scene, Vector3, Color4 } from '@babylonjs/core';
+import { Scene, Vector3, Color4, Color3 } from '@babylonjs/core';
 import { Missile } from '../entities/Missile';
 import { Enemy } from '../entities/Enemy';
 import { Player } from '../entities/Player';
+import { Asteroid } from '../entities/Asteroid';
+import { ResourceFragment } from '../entities/ResourceFragment';
 import { ExplosionEffect } from '../effects/ExplosionEffect';
 
 export class MissileManager {
@@ -125,6 +127,61 @@ export class MissileManager {
         }
 
         return destroyedCount;
+    }
+
+    public checkAsteroidCollisions(asteroids: Asteroid[]): ResourceFragment[] {
+        const blueFragments: ResourceFragment[] = [];
+
+        for (let i = this.missiles.length - 1; i >= 0; i--) {
+            const missile = this.missiles[i];
+            if (!missile.isAlive) continue;
+
+            for (const asteroid of asteroids) {
+                if (!asteroid.isAlive) continue;
+
+                const distance = Vector3.Distance(missile.position, asteroid.position);
+                const collisionRadius = asteroid.getCollisionRadius() + 1.5; // Missile collision buffer
+
+                if (distance < collisionRadius) {
+                    // Create bright blue explosion at asteroid position (more dramatic)
+                    const blueExplosionColor = new Color4(0.3, 0.6, 1.0, 1); // Bright blue
+                    const explosionSize = Math.max(2.0, asteroid.getCollisionRadius() * 1.5); // Larger, more visible
+                    this.explosionEffect.createExplosion(asteroid.position, blueExplosionColor, explosionSize);
+
+                    // Instantly destroy asteroid - create blue resource fragments
+                    const fragmentCount = Math.floor((5 + Math.random() * 8) * (asteroid.sizeType === 'large' ? 3 : asteroid.sizeType === 'medium' ? 2 : 1));
+
+                    for (let f = 0; f < fragmentCount; f++) {
+                        const offset = new Vector3(
+                            (Math.random() - 0.5) * 6,
+                            (Math.random() - 0.5) * 6,
+                            (Math.random() - 0.5) * 6
+                        );
+                        const fragmentPos = asteroid.position.add(offset);
+                        const blueFragment = new ResourceFragment(this.scene, fragmentPos);
+
+                        // Make fragment blue by modifying its material
+                        if (blueFragment.mesh && blueFragment.mesh.material) {
+                            const material = blueFragment.mesh.material as any;
+                            material.diffuseColor = new Color3(0.3, 0.6, 1.0); // Bright blue
+                            material.emissiveColor = new Color3(0.2, 0.4, 0.8); // Blue glow
+                        }
+
+                        blueFragments.push(blueFragment);
+                    }
+
+                    // Mark asteroid as destroyed
+                    asteroid.isAlive = false;
+
+                    // Destroy missile
+                    missile.isAlive = false;
+
+                    break; // Missile hits one asteroid
+                }
+            }
+        }
+
+        return blueFragments;
     }
 
     public purchaseMissilePack(): boolean {

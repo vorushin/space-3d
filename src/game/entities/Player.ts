@@ -14,6 +14,7 @@ export class Player {
     public maxHealth: number = 100;
     private speed: number = 20;
     private rotationSpeed: number = 2;
+    private gameAreaRadius: number = 280; // Slightly less than resource boundary (300)
 
     private isShooting: boolean = false;
     private shootCooldown: number = 0;
@@ -67,22 +68,10 @@ export class Player {
         this.shootCooldown = Math.max(0, this.shootCooldown - deltaTime);
         this.burstCooldown = Math.max(0, this.burstCooldown - deltaTime);
 
-        // Handle burst firing
-        if (this.burstShotsRemaining > 0 && this.burstCooldown <= 0) {
-            this.fireSingleShot();
-            this.burstShotsRemaining--;
-            this.burstCooldown = this.weaponConfig.burstDelay;
-        }
-        // Start new burst if shooting and cooldown expired
-        else if (this.isShooting && this.shootCooldown <= 0 && this.weaponLevel > 0 && this.burstShotsRemaining === 0) {
-            // Start burst
-            this.burstShotsRemaining = this.weaponConfig.burstCount;
+        // Handle shooting
+        if (this.isShooting && this.shootCooldown <= 0 && this.weaponLevel > 0) {
+            this.fireWeapon();
             this.shootCooldown = this.weaponConfig.fireRate;
-
-            // Fire first shot immediately
-            this.fireSingleShot();
-            this.burstShotsRemaining--;
-            this.burstCooldown = this.weaponConfig.burstDelay;
         }
 
         // Update projectiles
@@ -120,7 +109,23 @@ export class Player {
         if (keys['e']) velocity.addInPlace(up.scale(this.speed * deltaTime));
 
         this.camera.position.addInPlace(velocity);
+
+        // Clamp position to game area boundary
+        const distanceFromOrigin = this.camera.position.length();
+        if (distanceFromOrigin > this.gameAreaRadius) {
+            // Push player back to boundary
+            const direction = this.camera.position.normalize();
+            this.camera.position = direction.scale(this.gameAreaRadius);
+        }
+
         this.position = this.camera.position.clone();
+    }
+
+    private fireWeapon(): void {
+        // Fire multiple projectiles for multi-shot weapons (e.g., shotgun)
+        for (let i = 0; i < this.weaponConfig.bulletCount; i++) {
+            this.fireSingleShot();
+        }
     }
 
     private fireSingleShot(): void {
@@ -130,7 +135,7 @@ export class Player {
         const spawnOffset = forward.scale(2);
         const spawnPosition = this.camera.position.add(spawnOffset);
 
-        // Very small random spread for accuracy
+        // Random spread based on weapon type
         const horizontalSpread = (Math.random() - 0.5) * this.weaponConfig.spreadAngle;
         const verticalSpread = (Math.random() - 0.5) * this.weaponConfig.spreadAngle;
 
