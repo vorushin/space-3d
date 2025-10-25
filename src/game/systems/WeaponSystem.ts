@@ -65,19 +65,19 @@ export class WeaponSystem {
     }
 
     private static calculateFireRate(level: number): number {
-        // Much faster fire rates for exciting, action-packed combat
+        // Balanced fire rates - slower for splash weapons to reduce visual overload
         switch (level) {
             case 0: return 1.0;
             case 1: return 0.1;   // Kinetic: rapid fire
             case 2: return 0.05;  // Auto-Cannon: extremely fast
-            case 3: return 0.15;  // Heavy: fast with power
-            case 4: return 0.25;  // Shotgun: faster reload
+            case 3: return 0.2;   // Heavy: slower with splash
+            case 4: return 0.3;   // Shotgun: slower reload with splash
             case 5: return 0.08;  // Plasma Lance: very fast
             case 6: return 0.12;  // Chain Lightning: fast
-            case 7: return 0.1;   // Ion: fast splash
+            case 7: return 0.15;  // Ion: moderate with splash
             case 8: return 0.03;  // Minigun: INSANELY fast
-            case 9: return 0.15;  // Vortex: fast and devastating
-            case 10: return 0.2;  // Singularity: fast and cataclysmic
+            case 9: return 0.25;  // Vortex: slower with large splash
+            case 10: return 0.35; // Singularity: slower to prevent visual spam
             default: return 0.15;
         }
     }
@@ -178,13 +178,13 @@ export class WeaponSystem {
     }
 
     private static calculateSplashRadius(level: number): number {
-        // Multiple weapons with splash damage for epic destruction
+        // Splash radii capped at 7 to prevent visual overload
         switch (level) {
-            case 3: return 8;   // Heavy: medium splash
-            case 4: return 4;   // Shotgun: small splash per pellet for extra carnage
-            case 7: return 15;  // Ion: large splash
-            case 9: return 22;  // Vortex: massive splash
-            case 10: return 30; // Singularity: screen-clearing splash
+            case 3: return 5;   // Heavy: medium splash
+            case 4: return 2;   // Shotgun: small splash per pellet
+            case 7: return 7;   // Ion: moderate splash
+            case 9: return 7;   // Vortex: large splash
+            case 10: return 7;  // Singularity: capped splash
             default: return 0;  // No splash
         }
     }

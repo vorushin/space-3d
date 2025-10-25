@@ -51,7 +51,7 @@ The `Game` class (`src/game/Game.ts`) is the central coordinator that:
 - `MissileManager.ts` - Manages missile inventory, firing, tracking, and collision detection
 - `WeaponSystem.ts` - Defines 10 weapon levels with unique stats (damage, fire rate, burst, penetration, splash)
 - `ProgressionManager.ts` - Tracks upgrade levels, calculates costs, handles sector transitions, missile purchases
-- `UIManager.ts` - Updates HUD elements, manages upgrade menu visibility, missile count display
+- `UIManager.ts` - Updates HUD elements, manages upgrade menu visibility, missile count, enemy breakdown display
 
 ### Key Design Patterns
 
@@ -80,11 +80,19 @@ The `Game` class (`src/game/Game.ts`) is the central coordinator that:
 3. Small asteroids (10 HP) → break into ResourceFragments
 4. Collision with entities → `crashIntoFragments()` (5x fewer resources)
 
-**Enemy AI**:
+**Enemy AI & Ship Design**:
+- Eight ship types with progressive difficulty and spaceship-like designs
+- Power law scaling: `scaleFactor = 1.0 / Math.pow(size, 0.7)` (balanced visibility across sizes)
+- Entry ships: Scout (dart shape, size 1.5), Fighter (X-wing style, size 1.8), Heavy (gunship, size 2.2)
+- Capital ships: Destroyer (frigate, 1.8), Cruiser (wedge warship, 2.2), Battleship (2.6), Dreadnought (fortress, 3.0), Titan (ultimate capital ship, 3.5)
+- Ships rotate to face target only (no mindless spinning)
+- Health bars: fixed 5-unit width, renderingGroupId=1, zOffset=-10, always visible on top
+- Difficulty progression: heavies at 1.2, cruisers at 2.0, titans at 5.0
 - Maintain optimal shooting range per ship type (40-60 units)
 - Smooth movement with deadzone (5 units) to prevent jitter
 - Strafe perpendicular to target direction
 - Speed scales with distance error for smooth approach/retreat
+- All ships feature recognizable spaceship designs: sleek fighters, massive capital ships with bridge towers, engine arrays, weapon batteries
 
 ### Cross-System Communication
 
@@ -97,21 +105,28 @@ declare global {
 }
 ```
 
-`InputController` accesses this to call player shooting methods and toggle UI.
+`InputController` accesses this to call player shooting methods and fire missiles.
 
 ### Important Implementation Details
 
 **Weapon System**:
-- 10 weapon levels with unique characteristics (not just multi-shot spread)
-- Level 1-3: Basic single-shot cannons with increasing damage/fire rate
-- Level 4: Burst Rifle (3-round burst)
-- Level 5-6: Penetrating weapons (Plasma Lance, Rail Gun)
-- Level 7: Ion Disruptor (splash damage)
-- Level 8: Fusion Repeater (5-round burst)
-- Level 9: Antimatter Beam (very fast fire rate)
-- Level 10: Singularity Cannon (massive damage + splash + penetration)
-- Projectile colors vary by weapon level (orange→purple→blue→red spectrum)
-- All projectiles use minimal spread for accuracy (0.02 radians)
+- 10 weapon levels with unique characteristics and balanced combat
+- Fire rates balanced: slower for splash weapons to reduce visual overload
+- Projectiles spawn 10 units in front of camera to minimize visual impact
+- Splash radii capped at 7 units maximum to prevent headache-inducing effects
+- Level 1: Kinetic Cannon (0.1s fire rate, 4 damage)
+- Level 2: Auto-Cannon (0.05s, 3 damage, extreme fire rate)
+- Level 3: Heavy Cannon (0.2s, 15 damage, 5 splash)
+- Level 4: Scatter Shotgun (0.3s, 8 pellets × 6 damage, 2 splash per pellet)
+- Level 5: Plasma Lance (0.08s, 8 damage, 3 penetration)
+- Level 6: Chain Lightning (0.12s, 10 damage, 5 penetration)
+- Level 7: Ion Disruptor (0.15s, 12 damage, 7 splash)
+- Level 8: Rotary Minigun (0.03s, 3 bullets × 4 damage, 2 penetration)
+- Level 9: Vortex Cannon (0.25s, 18 damage, 7 splash, 4 penetration)
+- Level 10: Singularity Bomb (0.35s, 35 damage, 7 splash, 8 penetration)
+- Projectile colors vary by weapon level (orange→purple→blue→white spectrum)
+- Spread angles: shotgun 0.25 rad, minigun 0.05 rad, others 0.02 rad
+- Resource multiplier scales with level: 1.0x at level 1 → 2.5x at level 10
 
 **Missile System**:
 - Self-guided homing missiles fired with SPACE key
@@ -150,7 +165,7 @@ uiManager.update()
 - Projectiles track `penetrationCount` vs `penetration` limit
 - Only destroyed if `penetrationCount > penetration`
 - Managers must check `penetration > 0` before destroying on hit
-- Weapons with penetration: Plasma Lance (1), Rail Gun (2), Antimatter (1), Singularity (3)
+- Weapons with penetration: Plasma Lance (3), Chain Lightning (5), Minigun (2), Vortex (4), Singularity (8)
 
 **Material Application to Compound Meshes**:
 Enemy ships use mesh parenting. Material must be applied to root AND all children:
@@ -160,6 +175,14 @@ shipRoot.getChildMeshes().forEach(child => {
     child.material = material;
 });
 ```
+
+**Debug Features**:
+- "R" key or button: Add 1000 resources
+- "T" key or button: Spawn one of each enemy type (scout→titan) in circle around station
+- Debug panel in top center with both keyboard shortcuts and clickable buttons
+- Enemy breakdown display: Shows count by type (e.g., "2 scouts, 3 fighters, 1 heavy")
+- UIManager implements spawn logic for debug enemies via keyboard and button
+- Debug enemies spawned at 40 unit radius in evenly-spaced circle pattern
 
 ### TypeScript Configuration
 

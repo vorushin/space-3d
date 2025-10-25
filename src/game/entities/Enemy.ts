@@ -267,10 +267,13 @@ export class Enemy {
         }
 
         // IMPORTANT: Apply scaling to match player ship scale
-        // The mesh creation code uses multipliers that are too large, so we scale down the entire mesh
-        // Use inverse scaling: smaller ships get less reduction, larger ships get more reduction
-        // This makes small ships visible while keeping large ships at reasonable size
-        const scaleFactor = 0.3 / this.size; // Scout (1.0) → 0.3, Titan (3.5) → 0.086
+        // Problem: Mesh functions use different multipliers (scout uses ~2.5x, titan uses ~10x)
+        // Solution: Scale inversely with size, but with a gentler curve to keep small ships visible
+        // Formula: scale = 1.0 / (size^0.7) gives good balance across all sizes
+        // Scout (1.5): 1.0 / 1.5^0.7 = 0.77 scale
+        // Heavy (2.2): 1.0 / 2.2^0.7 = 0.59 scale
+        // Titan (3.5): 1.0 / 3.5^0.7 = 0.43 scale
+        const scaleFactor = 1.0 / Math.pow(this.size, 0.7);
         shipRoot.scaling.setAll(scaleFactor);
 
         const material = new StandardMaterial('enemyMaterial', this.scene);
@@ -324,63 +327,69 @@ export class Enemy {
 
 
     private createScoutShip(): Mesh {
-        // Fast interceptor design - sleek and narrow
+        // Fast interceptor - sleek dart shape
         const root = new Mesh('scoutRoot', this.scene);
 
-        // Main fuselage - elongated cone
-        const fuselage = MeshBuilder.CreateCylinder('scoutBody', {
-            diameterTop: 0.2 * this.size,
-            diameterBottom: 0.8 * this.size,
-            height: 2.5 * this.size,
-            tessellation: 8
+        // Pointed nose cone
+        const nose = MeshBuilder.CreateCylinder('scoutNose', {
+            diameterTop: 0,
+            diameterBottom: 0.5 * this.size,
+            height: 1.2 * this.size,
+            tessellation: 6
         }, this.scene);
-        fuselage.rotation.x = Math.PI / 2;
-        fuselage.parent = root;
+        nose.rotation.x = Math.PI / 2;
+        nose.position.z = 1.3 * this.size;
+        nose.parent = root;
 
-        // Cockpit
-        const cockpit = MeshBuilder.CreateSphere('scoutCockpit', {
-            diameter: 0.6 * this.size,
+        // Main body - streamlined
+        const body = MeshBuilder.CreateBox('scoutBody', {
+            width: 0.6 * this.size,
+            height: 0.4 * this.size,
+            depth: 1.5 * this.size
+        }, this.scene);
+        body.position.z = 0.3 * this.size;
+        body.parent = root;
+
+        // Cockpit canopy
+        const canopy = MeshBuilder.CreateSphere('scoutCanopy', {
+            diameter: 0.4 * this.size,
             segments: 8
         }, this.scene);
-        cockpit.position.z = 0.8 * this.size;
-        cockpit.scaling.z = 1.3;
-        cockpit.parent = root;
+        canopy.position.set(0, 0.3 * this.size, 0.6 * this.size);
+        canopy.scaling.set(0.8, 0.6, 1.2);
+        canopy.parent = root;
 
-        // Wings - small swept wings
-        const wingLeft = MeshBuilder.CreateBox('wingL', {
-            width: 1.2 * this.size,
-            height: 0.1 * this.size,
-            depth: 0.8 * this.size
+        // Thin wings
+        const wingL = MeshBuilder.CreateBox('wingL', {
+            width: 0.8 * this.size,
+            height: 0.05 * this.size,
+            depth: 0.6 * this.size
         }, this.scene);
-        wingLeft.position.x = -0.6 * this.size;
-        wingLeft.position.z = -0.3 * this.size;
-        wingLeft.rotation.y = -0.3;
-        wingLeft.parent = root;
+        wingL.position.set(-0.5 * this.size, 0, 0);
+        wingL.parent = root;
 
-        const wingRight = MeshBuilder.CreateBox('wingR', {
-            width: 1.2 * this.size,
-            height: 0.1 * this.size,
-            depth: 0.8 * this.size
+        const wingR = MeshBuilder.CreateBox('wingR', {
+            width: 0.8 * this.size,
+            height: 0.05 * this.size,
+            depth: 0.6 * this.size
         }, this.scene);
-        wingRight.position.x = 0.6 * this.size;
-        wingRight.position.z = -0.3 * this.size;
-        wingRight.rotation.y = 0.3;
-        wingRight.parent = root;
+        wingR.position.set(0.5 * this.size, 0, 0);
+        wingR.parent = root;
 
-        // Engine nozzles
+        // Twin engines
         const engineL = MeshBuilder.CreateCylinder('engineL', {
-            diameter: 0.3 * this.size,
-            height: 0.4 * this.size
+            diameter: 0.25 * this.size,
+            height: 0.6 * this.size
         }, this.scene);
-        engineL.position.set(-0.4 * this.size, 0, -1.1 * this.size);
+        engineL.position.set(-0.3 * this.size, 0, -0.6 * this.size);
         engineL.rotation.x = Math.PI / 2;
         engineL.parent = root;
 
         const engineR = MeshBuilder.CreateCylinder('engineR', {
-            diameter: 0.3 * this.size,
-            height: 0.4 * this.size
+            diameter: 0.25 * this.size,
+            height: 0.6 * this.size
         }, this.scene);
-        engineR.position.set(0.4 * this.size, 0, -1.1 * this.size);
+        engineR.position.set(0.3 * this.size, 0, -0.6 * this.size);
         engineR.rotation.x = Math.PI / 2;
         engineR.parent = root;
 
@@ -388,305 +397,436 @@ export class Enemy {
     }
 
     private createFighterShip(): Mesh {
-        // Balanced combat fighter - angular and aggressive
+        // X-wing style space superiority fighter
         const root = new Mesh('fighterRoot', this.scene);
 
-        // Main body - angular fuselage
-        const body = MeshBuilder.CreateBox('fighterBody', {
-            width: 1.2 * this.size,
-            height: 0.8 * this.size,
-            depth: 2.8 * this.size
+        // Central fuselage - cylindrical
+        const fuselage = MeshBuilder.CreateCylinder('fighterFuselage', {
+            diameter: 0.5 * this.size,
+            height: 2 * this.size,
+            tessellation: 8
         }, this.scene);
-        body.parent = root;
+        fuselage.rotation.x = Math.PI / 2;
+        fuselage.parent = root;
 
-        // Nose cone
+        // Nose
         const nose = MeshBuilder.CreateCylinder('fighterNose', {
             diameterTop: 0,
-            diameterBottom: 0.9 * this.size,
-            height: 1 * this.size,
-            tessellation: 4
+            diameterBottom: 0.5 * this.size,
+            height: 0.8 * this.size,
+            tessellation: 8
         }, this.scene);
         nose.rotation.x = Math.PI / 2;
-        nose.position.z = 1.9 * this.size;
+        nose.position.z = 1.4 * this.size;
         nose.parent = root;
 
-        // Cockpit canopy
-        const canopy = MeshBuilder.CreateSphere('fighterCanopy', {
-            diameter: 0.7 * this.size,
+        // Cockpit bulge
+        const cockpit = MeshBuilder.CreateSphere('fighterCockpit', {
+            diameter: 0.5 * this.size,
             segments: 8
         }, this.scene);
-        canopy.position.y = 0.5 * this.size;
-        canopy.position.z = 0.5 * this.size;
-        canopy.scaling.set(0.8, 0.6, 1.2);
-        canopy.parent = root;
+        cockpit.position.set(0, 0.3 * this.size, 0.4 * this.size);
+        cockpit.scaling.set(0.9, 0.7, 1.3);
+        cockpit.parent = root;
 
-        // Wings - swept delta wings
-        const wingL = MeshBuilder.CreateBox('wingL', {
-            width: 1.5 * this.size,
-            height: 0.15 * this.size,
-            depth: 1.5 * this.size
-        }, this.scene);
-        wingL.position.set(-1.1 * this.size, 0, -0.5 * this.size);
-        wingL.rotation.y = -0.4;
-        wingL.parent = root;
+        // Four wings (X configuration)
+        const wingConfigs = [
+            { x: -0.6, y: 0.4 },
+            { x: 0.6, y: 0.4 },
+            { x: -0.6, y: -0.4 },
+            { x: 0.6, y: -0.4 }
+        ];
 
-        const wingR = MeshBuilder.CreateBox('wingR', {
-            width: 1.5 * this.size,
-            height: 0.15 * this.size,
-            depth: 1.5 * this.size
-        }, this.scene);
-        wingR.position.set(1.1 * this.size, 0, -0.5 * this.size);
-        wingR.rotation.y = 0.4;
-        wingR.parent = root;
+        wingConfigs.forEach((config, i) => {
+            const wing = MeshBuilder.CreateBox(`wing${i}`, {
+                width: 0.8 * this.size,
+                height: 0.08 * this.size,
+                depth: 1 * this.size
+            }, this.scene);
+            wing.position.set(config.x * this.size, config.y * this.size, -0.3 * this.size);
+            wing.parent = root;
 
-        // Engines
-        const engineL = MeshBuilder.CreateCylinder('engineL', {
-            diameter: 0.5 * this.size,
-            height: 0.8 * this.size
-        }, this.scene);
-        engineL.position.set(-0.6 * this.size, 0, -1.6 * this.size);
-        engineL.rotation.x = Math.PI / 2;
-        engineL.parent = root;
-
-        const engineR = MeshBuilder.CreateCylinder('engineR', {
-            diameter: 0.5 * this.size,
-            height: 0.8 * this.size
-        }, this.scene);
-        engineR.position.set(0.6 * this.size, 0, -1.6 * this.size);
-        engineR.rotation.x = Math.PI / 2;
-        engineR.parent = root;
+            // Engine pod on each wing
+            const engine = MeshBuilder.CreateCylinder(`engine${i}`, {
+                diameter: 0.3 * this.size,
+                height: 0.7 * this.size
+            }, this.scene);
+            engine.position.set(config.x * this.size, config.y * this.size, -0.9 * this.size);
+            engine.rotation.x = Math.PI / 2;
+            engine.parent = root;
+        });
 
         return root;
     }
 
     private createHeavyShip(): Mesh {
-        // Bulky gunship - armored and imposing
+        // Corvette-class gunship - blocky and armored
         const root = new Mesh('heavyRoot', this.scene);
 
-        // Main hull - thick central body
+        // Central hull - rectangular core
         const hull = MeshBuilder.CreateBox('heavyHull', {
-            width: 2.5 * this.size,
-            height: 1.8 * this.size,
-            depth: 3.5 * this.size
+            width: 1.2 * this.size,
+            height: 0.8 * this.size,
+            depth: 2.5 * this.size
         }, this.scene);
         hull.parent = root;
 
-        // Armored nose section
-        const nose = MeshBuilder.CreateBox('heavyNose', {
-            width: 1.8 * this.size,
-            height: 1.4 * this.size,
-            depth: 1.2 * this.size
+        // Armored prow
+        const prow = MeshBuilder.CreateBox('heavyProw', {
+            width: 1 * this.size,
+            height: 0.6 * this.size,
+            depth: 0.8 * this.size
         }, this.scene);
-        nose.position.z = 2.3 * this.size;
-        nose.parent = root;
+        prow.position.z = 1.65 * this.size;
+        prow.parent = root;
 
-        // Bridge tower
+        // Command bridge on top
         const bridge = MeshBuilder.CreateBox('heavyBridge', {
-            width: 1.2 * this.size,
-            height: 1 * this.size,
-            depth: 1 * this.size
+            width: 0.8 * this.size,
+            height: 0.5 * this.size,
+            depth: 0.8 * this.size
         }, this.scene);
-        bridge.position.y = 1.4 * this.size;
-        bridge.position.z = 0.5 * this.size;
+        bridge.position.set(0, 0.65 * this.size, 0.4 * this.size);
         bridge.parent = root;
 
-        // Side armor plates
-        const armorL = MeshBuilder.CreateBox('armorL', {
+        // Side weapon pods
+        const podL = MeshBuilder.CreateBox('podL', {
             width: 0.4 * this.size,
-            height: 1.2 * this.size,
-            depth: 3 * this.size
+            height: 0.5 * this.size,
+            depth: 1.8 * this.size
         }, this.scene);
-        armorL.position.x = -1.4 * this.size;
-        armorL.parent = root;
+        podL.position.set(-0.8 * this.size, 0, 0);
+        podL.parent = root;
 
-        const armorR = MeshBuilder.CreateBox('armorR', {
+        const podR = MeshBuilder.CreateBox('podR', {
             width: 0.4 * this.size,
-            height: 1.2 * this.size,
-            depth: 3 * this.size
+            height: 0.5 * this.size,
+            depth: 1.8 * this.size
         }, this.scene);
-        armorR.position.x = 1.4 * this.size;
-        armorR.parent = root;
+        podR.position.set(0.8 * this.size, 0, 0);
+        podR.parent = root;
 
-        // Engine cluster - 4 large engines
-        const enginePositions = [
-            { x: -0.8 * this.size, y: -0.3 * this.size },
-            { x: 0.8 * this.size, y: -0.3 * this.size },
-            { x: -0.8 * this.size, y: 0.3 * this.size },
-            { x: 0.8 * this.size, y: 0.3 * this.size }
-        ];
+        // Four engines in square formation
+        for (let i = 0; i < 4; i++) {
+            const x = (i % 2 === 0 ? -0.5 : 0.5) * this.size;
+            const y = (i < 2 ? -0.3 : 0.3) * this.size;
 
-        enginePositions.forEach((pos, i) => {
             const engine = MeshBuilder.CreateCylinder(`engine${i}`, {
-                diameter: 0.6 * this.size,
-                height: 1 * this.size
+                diameter: 0.4 * this.size,
+                height: 0.6 * this.size
             }, this.scene);
-            engine.position.set(pos.x, pos.y, -2.2 * this.size);
+            engine.position.set(x, y, -1.5 * this.size);
             engine.rotation.x = Math.PI / 2;
             engine.parent = root;
-        });
+        }
 
-        // Gun turrets
-        const turretL = MeshBuilder.CreateSphere('turretL', {
-            diameter: 0.6 * this.size
+        // Gun turrets on top
+        const turretF = MeshBuilder.CreateSphere('turretF', {
+            diameter: 0.4 * this.size
         }, this.scene);
-        turretL.position.set(-1 * this.size, 0.5 * this.size, 1 * this.size);
-        turretL.parent = root;
+        turretF.position.set(0, 0.6 * this.size, 0.8 * this.size);
+        turretF.parent = root;
 
         const turretR = MeshBuilder.CreateSphere('turretR', {
-            diameter: 0.6 * this.size
+            diameter: 0.4 * this.size
         }, this.scene);
-        turretR.position.set(1 * this.size, 0.5 * this.size, 1 * this.size);
+        turretR.position.set(0, 0.6 * this.size, -0.5 * this.size);
         turretR.parent = root;
 
         return root;
     }
 
     private createDestroyerShip(): Mesh {
-        // Capital ship - massive and intimidating
+        // Frigate-class destroyer - sleek capital ship
         const root = new Mesh('destroyerRoot', this.scene);
 
-        // Main hull - long central spine
-        const spine = MeshBuilder.CreateBox('destroyerSpine', {
-            width: 2 * this.size,
-            height: 2 * this.size,
-            depth: 5 * this.size
-        }, this.scene);
-        spine.parent = root;
-
-        // Forward section - command tower
-        const command = MeshBuilder.CreateBox('destroyerCommand', {
-            width: 1.5 * this.size,
-            height: 2.5 * this.size,
-            depth: 2 * this.size
-        }, this.scene);
-        command.position.y = 2 * this.size;
-        command.position.z = 1 * this.size;
-        command.parent = root;
-
-        // Prow - armored front
-        const prow = MeshBuilder.CreateBox('destroyerProw', {
-            width: 1.5 * this.size,
-            height: 1.5 * this.size,
-            depth: 1.5 * this.size
-        }, this.scene);
-        prow.position.z = 3.2 * this.size;
-        prow.parent = root;
-
-        // Side sections - cargo/hangar bays
-        const bayL = MeshBuilder.CreateBox('bayL', {
-            width: 1.5 * this.size,
-            height: 1.5 * this.size,
-            depth: 3 * this.size
-        }, this.scene);
-        bayL.position.set(-1.7 * this.size, -0.3 * this.size, 0);
-        bayL.parent = root;
-
-        const bayR = MeshBuilder.CreateBox('bayR', {
-            width: 1.5 * this.size,
-            height: 1.5 * this.size,
-            depth: 3 * this.size
-        }, this.scene);
-        bayR.position.set(1.7 * this.size, -0.3 * this.size, 0);
-        bayR.parent = root;
-
-        // Engine array - massive propulsion
-        const mainEngine = MeshBuilder.CreateCylinder('mainEngine', {
-            diameter: 2.5 * this.size,
-            height: 1.5 * this.size
-        }, this.scene);
-        mainEngine.position.z = -3.2 * this.size;
-        mainEngine.rotation.x = Math.PI / 2;
-        mainEngine.parent = root;
-
-        // Secondary engines
-        const secEngineL = MeshBuilder.CreateCylinder('secEngL', {
+        // Main hull - elongated hexagonal prism
+        const hull = MeshBuilder.CreateCylinder('destroyerHull', {
             diameter: 1 * this.size,
-            height: 0.8 * this.size
+            height: 3 * this.size,
+            tessellation: 6
         }, this.scene);
-        secEngineL.position.set(-1.7 * this.size, 0, -1.8 * this.size);
-        secEngineL.rotation.x = Math.PI / 2;
-        secEngineL.parent = root;
+        hull.rotation.x = Math.PI / 2;
+        hull.parent = root;
 
-        const secEngineR = MeshBuilder.CreateCylinder('secEngR', {
-            diameter: 1 * this.size,
-            height: 0.8 * this.size
+        // Tapered nose
+        const nose = MeshBuilder.CreateCylinder('destroyerNose', {
+            diameterTop: 0,
+            diameterBottom: 1 * this.size,
+            height: 1 * this.size,
+            tessellation: 6
         }, this.scene);
-        secEngineR.position.set(1.7 * this.size, 0, -1.8 * this.size);
-        secEngineR.rotation.x = Math.PI / 2;
-        secEngineR.parent = root;
+        nose.rotation.x = Math.PI / 2;
+        nose.position.z = 2 * this.size;
+        nose.parent = root;
 
-        // Weapon batteries
+        // Bridge superstructure
+        const bridge = MeshBuilder.CreateBox('destroyerBridge', {
+            width: 0.7 * this.size,
+            height: 0.6 * this.size,
+            depth: 0.9 * this.size
+        }, this.scene);
+        bridge.position.set(0, 0.8 * this.size, 0.5 * this.size);
+        bridge.parent = root;
+
+        // Side weapon nacelles
+        const nacelleL = MeshBuilder.CreateBox('nacelleL', {
+            width: 0.3 * this.size,
+            height: 0.5 * this.size,
+            depth: 2.2 * this.size
+        }, this.scene);
+        nacelleL.position.set(-0.65 * this.size, 0, 0);
+        nacelleL.parent = root;
+
+        const nacelleR = MeshBuilder.CreateBox('nacelleR', {
+            width: 0.3 * this.size,
+            height: 0.5 * this.size,
+            depth: 2.2 * this.size
+        }, this.scene);
+        nacelleR.position.set(0.65 * this.size, 0, 0);
+        nacelleR.parent = root;
+
+        // Main engine cluster (3 engines)
         for (let i = 0; i < 3; i++) {
-            const batteryL = MeshBuilder.CreateBox(`batteryL${i}`, {
-                width: 0.3 * this.size,
-                height: 0.4 * this.size,
-                depth: 0.6 * this.size
+            const angle = (i / 3) * Math.PI * 2;
+            const radius = 0.4 * this.size;
+            const engine = MeshBuilder.CreateCylinder(`engine${i}`, {
+                diameter: 0.4 * this.size,
+                height: 0.7 * this.size
             }, this.scene);
-            batteryL.position.set(-1 * this.size, 0.7 * this.size, 1.5 * this.size - i * 1.5 * this.size);
-            batteryL.parent = root;
-
-            const batteryR = MeshBuilder.CreateBox(`batteryR${i}`, {
-                width: 0.3 * this.size,
-                height: 0.4 * this.size,
-                depth: 0.6 * this.size
-            }, this.scene);
-            batteryR.position.set(1 * this.size, 0.7 * this.size, 1.5 * this.size - i * 1.5 * this.size);
-            batteryR.parent = root;
+            engine.position.set(
+                Math.cos(angle) * radius,
+                Math.sin(angle) * radius,
+                -1.8 * this.size
+            );
+            engine.rotation.x = Math.PI / 2;
+            engine.parent = root;
         }
+
+        // Weapon turrets
+        const turretPositions = [
+            { x: 0, y: 0.7, z: 1 },
+            { x: -0.6, y: 0.3, z: 0 },
+            { x: 0.6, y: 0.3, z: 0 }
+        ];
+
+        turretPositions.forEach((pos, i) => {
+            const turret = MeshBuilder.CreateSphere(`turret${i}`, {
+                diameter: 0.35 * this.size
+            }, this.scene);
+            turret.position.set(pos.x * this.size, pos.y * this.size, pos.z * this.size);
+            turret.parent = root;
+        });
 
         return root;
     }
 
     private createCruiserShip(): Mesh {
-        // Large capital warship - heavily armed
+        // Heavy cruiser - powerful wedge-shaped warship
         const root = new Mesh('cruiserRoot', this.scene);
 
-        // Central hull - massive box
-        const mainHull = MeshBuilder.CreateBox('cruiserHull', {
-            width: 3 * this.size,
-            height: 2.5 * this.size,
-            depth: 6 * this.size
+        // Main hull - wedge shape front to back
+        const hull = MeshBuilder.CreateBox('cruiserHull', {
+            width: 1.5 * this.size,
+            height: 1 * this.size,
+            depth: 4 * this.size
         }, this.scene);
-        mainHull.parent = root;
+        hull.parent = root;
 
-        // Multi-deck superstructure
-        for (let i = 0; i < 3; i++) {
-            const deck = MeshBuilder.CreateBox(`deck${i}`, {
-                width: 2 * this.size,
-                height: 0.8 * this.size,
+        // Tapered nose
+        const nose = MeshBuilder.CreateCylinder('cruiserNose', {
+            diameterTop: 0,
+            diameterBottom: 1.5 * this.size,
+            height: 1.2 * this.size,
+            tessellation: 6
+        }, this.scene);
+        nose.rotation.x = Math.PI / 2;
+        nose.position.z = 2.6 * this.size;
+        nose.parent = root;
+
+        // Bridge tower (moderate height)
+        const bridge = MeshBuilder.CreateBox('cruiserBridge', {
+            width: 1 * this.size,
+            height: 0.8 * this.size,
+            depth: 1.2 * this.size
+        }, this.scene);
+        bridge.position.set(0, 0.9 * this.size, 0.6 * this.size);
+        bridge.parent = root;
+
+        // Side sponsons with turrets
+        for (let side = -1; side <= 1; side += 2) {
+            const sponson = MeshBuilder.CreateBox(`sponson${side}`, {
+                width: 0.5 * this.size,
+                height: 0.7 * this.size,
                 depth: 3 * this.size
             }, this.scene);
-            deck.position.y = (2.5 + i * 0.9) * this.size;
-            deck.position.z = 0.5 * this.size;
-            deck.parent = root;
+            sponson.position.set(side * 1 * this.size, -0.2 * this.size, 0);
+            sponson.parent = root;
+
+            // Turrets on sponsons
+            const turret = MeshBuilder.CreateSphere(`turret${side}`, {
+                diameter: 0.5 * this.size
+            }, this.scene);
+            turret.position.set(side * 1 * this.size, 0.5 * this.size, 0.5 * this.size);
+            turret.parent = root;
         }
 
-        // Forward prow blades
-        const prowL = MeshBuilder.CreateBox('prowL', {
-            width: 0.5 * this.size,
-            height: 2 * this.size,
-            depth: 3 * this.size
-        }, this.scene);
-        prowL.position.set(-1.5 * this.size, 0, 4 * this.size);
-        prowL.rotation.z = 0.3;
-        prowL.parent = root;
-
-        const prowR = MeshBuilder.CreateBox('prowR', {
-            width: 0.5 * this.size,
-            height: 2 * this.size,
-            depth: 3 * this.size
-        }, this.scene);
-        prowR.position.set(1.5 * this.size, 0, 4 * this.size);
-        prowR.rotation.z = -0.3;
-        prowR.parent = root;
-
-        // Engine array - 6 massive engines
+        // Engine cluster (6 engines)
         for (let i = 0; i < 6; i++) {
-            const x = (i % 3 - 1) * 1.2 * this.size;
-            const y = (Math.floor(i / 3) - 0.5) * 1.5 * this.size;
+            const angle = (i / 6) * Math.PI * 2;
+            const radius = 0.6 * this.size;
             const engine = MeshBuilder.CreateCylinder(`engine${i}`, {
-                diameter: 0.9 * this.size,
-                height: 1.5 * this.size
+                diameter: 0.5 * this.size,
+                height: 0.8 * this.size
+            }, this.scene);
+            engine.position.set(
+                Math.cos(angle) * radius,
+                Math.sin(angle) * radius,
+                -2.3 * this.size
+            );
+            engine.rotation.x = Math.PI / 2;
+            engine.parent = root;
+        }
+
+        return root;
+    }
+
+    private createBattleshipShip(): Mesh {
+        // Battleship - large capital ship with layered structure
+        const root = new Mesh('battleshipRoot', this.scene);
+
+        // Main hull - large rectangular body
+        const hull = MeshBuilder.CreateBox('battleshipHull', {
+            width: 2 * this.size,
+            height: 1.2 * this.size,
+            depth: 5 * this.size
+        }, this.scene);
+        hull.parent = root;
+
+        // Nose section
+        const nose = MeshBuilder.CreateCylinder('battleshipNose', {
+            diameterTop: 0.5 * this.size,
+            diameterBottom: 2 * this.size,
+            height: 1.5 * this.size,
+            tessellation: 6
+        }, this.scene);
+        nose.rotation.x = Math.PI / 2;
+        nose.position.z = 3.25 * this.size;
+        nose.parent = root;
+
+        // Bridge tower (2-level)
+        const bridgeBase = MeshBuilder.CreateBox('bridgeBase', {
+            width: 1.3 * this.size,
+            height: 0.7 * this.size,
+            depth: 1.5 * this.size
+        }, this.scene);
+        bridgeBase.position.set(0, 0.95 * this.size, 0.8 * this.size);
+        bridgeBase.parent = root;
+
+        const bridgeTop = MeshBuilder.CreateBox('bridgeTop', {
+            width: 1 * this.size,
+            height: 0.6 * this.size,
+            depth: 1.2 * this.size
+        }, this.scene);
+        bridgeTop.position.set(0, 1.6 * this.size, 0.8 * this.size);
+        bridgeTop.parent = root;
+
+        // Heavy turrets (4 main turrets)
+        const turretPositions = [
+            { x: 0, y: 0.9, z: 1.8 },
+            { x: -0.9, y: 0.5, z: 0 },
+            { x: 0.9, y: 0.5, z: 0 },
+            { x: 0, y: 0.9, z: -1.5 }
+        ];
+
+        turretPositions.forEach((pos, i) => {
+            const turret = MeshBuilder.CreateSphere(`turret${i}`, {
+                diameter: 0.7 * this.size
+            }, this.scene);
+            turret.position.set(pos.x * this.size, pos.y * this.size, pos.z * this.size);
+            turret.parent = root;
+        });
+
+        // Engine array (9 engines in 3x3 grid)
+        for (let i = 0; i < 9; i++) {
+            const x = (i % 3 - 1) * 0.8 * this.size;
+            const y = (Math.floor(i / 3) - 1) * 0.8 * this.size;
+            const engine = MeshBuilder.CreateCylinder(`engine${i}`, {
+                diameter: 0.6 * this.size,
+                height: 1 * this.size
+            }, this.scene);
+            engine.position.set(x, y, -3 * this.size);
+            engine.rotation.x = Math.PI / 2;
+            engine.parent = root;
+        }
+
+        return root;
+    }
+
+    private createDreadnoughtShip(): Mesh {
+        // Dreadnought - massive fortress ship
+        const root = new Mesh('dreadnoughtRoot', this.scene);
+
+        // Main hull - very large rectangular core
+        const hull = MeshBuilder.CreateBox('dreadnoughtHull', {
+            width: 2.5 * this.size,
+            height: 1.5 * this.size,
+            depth: 6 * this.size
+        }, this.scene);
+        hull.parent = root;
+
+        // Armored prow
+        const prow = MeshBuilder.CreateBox('dreadnoughtProw', {
+            width: 2 * this.size,
+            height: 1.2 * this.size,
+            depth: 1.5 * this.size
+        }, this.scene);
+        prow.position.z = 3.75 * this.size;
+        prow.parent = root;
+
+        // Bridge tower (3-level)
+        for (let i = 0; i < 3; i++) {
+            const width = (1.5 - i * 0.2) * this.size;
+            const tower = MeshBuilder.CreateBox(`tower${i}`, {
+                width: width,
+                height: 0.6 * this.size,
+                depth: 1.3 * this.size
+            }, this.scene);
+            tower.position.set(0, (1.05 + i * 0.7) * this.size, 1 * this.size);
+            tower.parent = root;
+        }
+
+        // Side weapon batteries
+        for (let side = -1; side <= 1; side += 2) {
+            const battery = MeshBuilder.CreateBox(`battery${side}`, {
+                width: 0.6 * this.size,
+                height: 1 * this.size,
+                depth: 4.5 * this.size
+            }, this.scene);
+            battery.position.set(side * 1.5 * this.size, 0, 0);
+            battery.parent = root;
+
+            // Turrets on batteries
+            for (let i = 0; i < 3; i++) {
+                const turret = MeshBuilder.CreateSphere(`turret${side}_${i}`, {
+                    diameter: 0.6 * this.size
+                }, this.scene);
+                turret.position.set(
+                    side * 1.5 * this.size,
+                    0.8 * this.size,
+                    (i - 1) * 1.8 * this.size
+                );
+                turret.parent = root;
+            }
+        }
+
+        // Engine array (12 engines in 4x3 grid)
+        for (let i = 0; i < 12; i++) {
+            const x = (i % 4 - 1.5) * 0.7 * this.size;
+            const y = (Math.floor(i / 4) - 1) * 0.7 * this.size;
+            const engine = MeshBuilder.CreateCylinder(`engine${i}`, {
+                diameter: 0.6 * this.size,
+                height: 1.2 * this.size
             }, this.scene);
             engine.position.set(x, y, -3.5 * this.size);
             engine.rotation.x = Math.PI / 2;
@@ -696,386 +836,107 @@ export class Enemy {
         return root;
     }
 
-    private createBattleshipShip(): Mesh {
-        // Colossal warship - maximum firepower
-        const root = new Mesh('battleshipRoot', this.scene);
+    private createTitanShip(): Mesh {
+        // Titan - ultimate capital ship, largest and most powerful
+        const root = new Mesh('titanRoot', this.scene);
 
-        // Central spine - ultra-massive
-        const spine = MeshBuilder.CreateBox('battleshipSpine', {
-            width: 4 * this.size,
-            height: 3 * this.size,
-            depth: 8 * this.size
+        // Main hull - massive rectangular core
+        const hull = MeshBuilder.CreateBox('titanHull', {
+            width: 3 * this.size,
+            height: 1.8 * this.size,
+            depth: 7 * this.size
         }, this.scene);
-        spine.parent = root;
+        hull.parent = root;
 
-        // Tower superstructure - multiple levels
+        // Armored prow section
+        const prow = MeshBuilder.CreateBox('titanProw', {
+            width: 2.5 * this.size,
+            height: 1.5 * this.size,
+            depth: 2 * this.size
+        }, this.scene);
+        prow.position.z = 4.5 * this.size;
+        prow.parent = root;
+
+        // Bridge tower (4-level command structure)
         for (let i = 0; i < 4; i++) {
+            const width = (1.8 - i * 0.25) * this.size;
             const tower = MeshBuilder.CreateBox(`tower${i}`, {
-                width: (3.5 - i * 0.3) * this.size,
-                height: 1.5 * this.size,
-                depth: 2.5 * this.size
+                width: width,
+                height: 0.7 * this.size,
+                depth: 1.5 * this.size
             }, this.scene);
-            tower.position.y = (3 + i * 1.6) * this.size;
-            tower.position.z = 1 * this.size;
+            tower.position.set(0, (1.2 + i * 0.8) * this.size, 1.2 * this.size);
             tower.parent = root;
         }
 
-        // Wing sections with gun batteries
-        const wingL = MeshBuilder.CreateBox('wingL', {
-            width: 2 * this.size,
-            height: 2 * this.size,
-            depth: 6 * this.size
-        }, this.scene);
-        wingL.position.set(-3 * this.size, 0, 0);
-        wingL.parent = root;
-
-        const wingR = MeshBuilder.CreateBox('wingR', {
-            width: 2 * this.size,
-            height: 2 * this.size,
-            depth: 6 * this.size
-        }, this.scene);
-        wingR.position.set(3 * this.size, 0, 0);
-        wingR.parent = root;
-
-        // Main gun turrets - 8 massive turrets
-        for (let i = 0; i < 8; i++) {
-            const xPos = (i % 2 === 0 ? -2 : 2) * this.size;
-            const zPos = (Math.floor(i / 2) - 1.5) * 2 * this.size;
-            const turret = MeshBuilder.CreateSphere(`turret${i}`, {
-                diameter: 1.2 * this.size
-            }, this.scene);
-            turret.position.set(xPos, 1.8 * this.size, zPos);
-            turret.parent = root;
-        }
-
-        // Engine cluster - 9 gigantic engines
-        for (let i = 0; i < 9; i++) {
-            const x = (i % 3 - 1) * 1.5 * this.size;
-            const y = (Math.floor(i / 3) - 1) * 1.5 * this.size;
-            const engine = MeshBuilder.CreateCylinder(`engine${i}`, {
-                diameter: 1.2 * this.size,
-                height: 2 * this.size
-            }, this.scene);
-            engine.position.set(x, y, -5 * this.size);
-            engine.rotation.x = Math.PI / 2;
-            engine.parent = root;
-        }
-
-        return root;
-    }
-
-    private createDreadnoughtShip(): Mesh {
-        // Ultimate fortress - planet killer
-        const root = new Mesh('dreadnoughtRoot', this.scene);
-
-        // Central citadel - absolutely massive
-        const citadel = MeshBuilder.CreateBox('dreadnoughtCitadel', {
-            width: 6 * this.size,
-            height: 4 * this.size,
-            depth: 10 * this.size
-        }, this.scene);
-        citadel.parent = root;
-
-        // Command spire - towering structure
-        for (let i = 0; i < 6; i++) {
-            const spireLevel = MeshBuilder.CreateBox(`spire${i}`, {
-                width: (5 - i * 0.4) * this.size,
-                height: 2 * this.size,
-                depth: 3 * this.size
-            }, this.scene);
-            spireLevel.position.y = (4 + i * 2.1) * this.size;
-            spireLevel.position.z = 2 * this.size;
-            spireLevel.parent = root;
-        }
-
-        // Broadside sections - flanking armor
+        // Side weapon batteries - massive broadside arrays
         for (let side = -1; side <= 1; side += 2) {
-            const broadside = MeshBuilder.CreateBox(`broadside${side}`, {
-                width: 2.5 * this.size,
-                height: 3 * this.size,
-                depth: 8 * this.size
+            const battery = MeshBuilder.CreateBox(`battery${side}`, {
+                width: 0.7 * this.size,
+                height: 1.2 * this.size,
+                depth: 5.5 * this.size
             }, this.scene);
-            broadside.position.set(side * 4 * this.size, 0, 0);
-            broadside.parent = root;
+            battery.position.set(side * 1.8 * this.size, 0, 0);
+            battery.parent = root;
 
-            // Gun decks on each broadside
-            for (let i = 0; i < 5; i++) {
-                const gun = MeshBuilder.CreateBox(`gun${side}_${i}`, {
-                    width: 0.5 * this.size,
-                    height: 0.5 * this.size,
-                    depth: 1 * this.size
+            // Heavy turrets on batteries (4 per side)
+            for (let i = 0; i < 4; i++) {
+                const turret = MeshBuilder.CreateSphere(`turret${side}_${i}`, {
+                    diameter: 0.7 * this.size
                 }, this.scene);
-                gun.position.set(
-                    side * 5 * this.size,
-                    1 * this.size,
-                    (i - 2) * 1.8 * this.size
+                turret.position.set(
+                    side * 1.8 * this.size,
+                    0.9 * this.size,
+                    (i - 1.5) * 1.6 * this.size
                 );
-                gun.parent = root;
+                turret.parent = root;
             }
         }
 
-        // Prow ram - devastating frontal structure
-        const prow = MeshBuilder.CreateBox('prow', {
-            width: 4 * this.size,
-            height: 3 * this.size,
-            depth: 3 * this.size
-        }, this.scene);
-        prow.position.z = 6.5 * this.size;
-        prow.parent = root;
+        // Dorsal weapon platforms (main guns)
+        const dorsalTurretPositions = [
+            { x: 0, y: 1.2, z: 2.5 },
+            { x: -1.2, y: 0.8, z: 1 },
+            { x: 1.2, y: 0.8, z: 1 },
+            { x: 0, y: 1.2, z: -1 }
+        ];
 
-        // Engine array - 12 titanic engines
-        for (let i = 0; i < 12; i++) {
-            const x = (i % 4 - 1.5) * 1.5 * this.size;
-            const y = (Math.floor(i / 4) - 1) * 1.8 * this.size;
-            const engine = MeshBuilder.CreateCylinder(`engine${i}`, {
-                diameter: 1.5 * this.size,
-                height: 2.5 * this.size
+        dorsalTurretPositions.forEach((pos, i) => {
+            const turret = MeshBuilder.CreateSphere(`dorsalTurret${i}`, {
+                diameter: 0.8 * this.size
             }, this.scene);
-            engine.position.set(x, y, -6 * this.size);
-            engine.rotation.x = Math.PI / 2;
-            engine.parent = root;
-        }
-
-        // Anti-capital turrets - 12 massive weapon platforms
-        for (let i = 0; i < 12; i++) {
-            const angle = (i / 12) * Math.PI * 2;
-            const radius = 3.5 * this.size;
-            const turret = MeshBuilder.CreateSphere(`capitalTurret${i}`, {
-                diameter: 1.8 * this.size
-            }, this.scene);
-            turret.position.set(
-                Math.cos(angle) * radius,
-                2.5 * this.size,
-                Math.sin(angle) * radius
-            );
+            turret.position.set(pos.x * this.size, pos.y * this.size, pos.z * this.size);
             turret.parent = root;
-        }
+        });
 
-        return root;
-    }
-
-    private createTitanShip(): Mesh {
-        // Apocalyptic mega-fortress - screen-filling monstrosity beyond comprehension
-        const root = new Mesh('titanRoot', this.scene);
-
-        // Central mega-citadel - absolutely gargantuan core
-        const megaCitadel = MeshBuilder.CreateBox('titanCitadel', {
-            width: 10 * this.size,
-            height: 6 * this.size,
-            depth: 15 * this.size
-        }, this.scene);
-        megaCitadel.parent = root;
-
-        // Primary command spire - towering cathedral-like structure (8 levels)
-        for (let i = 0; i < 8; i++) {
-            const spireLevel = MeshBuilder.CreateBox(`primarySpire${i}`, {
-                width: (7 - i * 0.5) * this.size,
-                height: 2.5 * this.size,
-                depth: 4 * this.size
-            }, this.scene);
-            spireLevel.position.y = (6 + i * 2.6) * this.size;
-            spireLevel.position.z = 3 * this.size;
-            spireLevel.parent = root;
-
-            // Add antenna/sensor arrays on top levels
-            if (i >= 5) {
-                for (let j = 0; j < 4; j++) {
-                    const antenna = MeshBuilder.CreateCylinder(`antenna${i}_${j}`, {
-                        diameterTop: 0.1 * this.size,
-                        diameterBottom: 0.2 * this.size,
-                        height: 1.5 * this.size
-                    }, this.scene);
-                    const angle = (j / 4) * Math.PI * 2;
-                    antenna.position.set(
-                        Math.cos(angle) * 2 * this.size,
-                        (6 + i * 2.6 + 1.8) * this.size,
-                        3 * this.size + Math.sin(angle) * 2 * this.size
-                    );
-                    antenna.parent = root;
-                }
-            }
-        }
-
-        // Secondary spire towers - flanking the main spire
-        for (let side = -1; side <= 1; side += 2) {
-            for (let i = 0; i < 5; i++) {
-                const tower = MeshBuilder.CreateBox(`secTower${side}_${i}`, {
-                    width: (3 - i * 0.3) * this.size,
-                    height: 2 * this.size,
-                    depth: 2.5 * this.size
-                }, this.scene);
-                tower.position.set(
-                    side * 4 * this.size,
-                    (6 + i * 2.2) * this.size,
-                    1 * this.size
-                );
-                tower.parent = root;
-            }
-        }
-
-        // Massive wing sections - cathedral buttresses extending outward
-        for (let side = -1; side <= 1; side += 2) {
-            const megaWing = MeshBuilder.CreateBox(`megaWing${side}`, {
-                width: 4 * this.size,
-                height: 5 * this.size,
-                depth: 12 * this.size
-            }, this.scene);
-            megaWing.position.set(side * 7 * this.size, 0, 0);
-            megaWing.parent = root;
-
-            // Wing armor plating
-            const armorPlate = MeshBuilder.CreateBox(`armorPlate${side}`, {
-                width: 1 * this.size,
-                height: 4 * this.size,
-                depth: 10 * this.size
-            }, this.scene);
-            armorPlate.position.set(side * 9 * this.size, 0, 0);
-            armorPlate.parent = root;
-        }
-
-        // Broadside weapon arrays - multiple decks of devastating firepower
-        for (let side = -1; side <= 1; side += 2) {
-            const broadside = MeshBuilder.CreateBox(`broadside${side}`, {
-                width: 3 * this.size,
-                height: 5 * this.size,
-                depth: 14 * this.size
-            }, this.scene);
-            broadside.position.set(side * 6.5 * this.size, -1 * this.size, 0);
-            broadside.parent = root;
-
-            // Three decks of gun batteries per side
-            for (let deck = 0; deck < 3; deck++) {
-                for (let i = 0; i < 8; i++) {
-                    const gun = MeshBuilder.CreateBox(`gun${side}_${deck}_${i}`, {
-                        width: 0.6 * this.size,
-                        height: 0.6 * this.size,
-                        depth: 1.2 * this.size
-                    }, this.scene);
-                    gun.position.set(
-                        side * 8 * this.size,
-                        (-1 + deck * 2) * this.size,
-                        (i - 3.5) * 1.7 * this.size
-                    );
-                    gun.parent = root;
-                }
-            }
-        }
-
-        // Forward prow - devastating ram structure
-        const megaProw = MeshBuilder.CreateBox('megaProw', {
-            width: 7 * this.size,
-            height: 5 * this.size,
-            depth: 5 * this.size
-        }, this.scene);
-        megaProw.position.z = 10 * this.size;
-        megaProw.parent = root;
-
-        // Prow blades - cutting edges
-        for (let side = -1; side <= 1; side += 2) {
-            const blade = MeshBuilder.CreateBox(`prowBlade${side}`, {
-                width: 1 * this.size,
-                height: 4 * this.size,
-                depth: 4 * this.size
-            }, this.scene);
-            blade.position.set(side * 4 * this.size, 0, 11 * this.size);
-            blade.rotation.y = side * 0.4;
-            blade.parent = root;
-        }
-
-        // Engine array - 20 colossal engines in organized formation
-        for (let i = 0; i < 20; i++) {
-            const x = (i % 5 - 2) * 2 * this.size;
-            const y = (Math.floor(i / 5) - 1.5) * 2 * this.size;
+        // Engine array (16 engines in 4x4 grid)
+        for (let i = 0; i < 16; i++) {
+            const x = (i % 4 - 1.5) * 0.8 * this.size;
+            const y = (Math.floor(i / 4) - 1.5) * 0.8 * this.size;
             const engine = MeshBuilder.CreateCylinder(`engine${i}`, {
-                diameter: 1.8 * this.size,
-                height: 3 * this.size
+                diameter: 0.7 * this.size,
+                height: 1.3 * this.size
             }, this.scene);
-            engine.position.set(x, y, -9 * this.size);
+            engine.position.set(x, y, -4.2 * this.size);
             engine.rotation.x = Math.PI / 2;
             engine.parent = root;
 
             // Engine glow rings
             const glowRing = MeshBuilder.CreateTorus(`engineGlow${i}`, {
-                diameter: 1.8 * this.size,
-                thickness: 0.15 * this.size
+                diameter: 0.7 * this.size,
+                thickness: 0.08 * this.size
             }, this.scene);
-            glowRing.position.set(x, y, -10.5 * this.size);
+            glowRing.position.set(x, y, -4.9 * this.size);
             glowRing.parent = root;
         }
 
-        // Capital-class turret installations - 24 massive weapon platforms
-        for (let i = 0; i < 24; i++) {
-            const angle = (i / 24) * Math.PI * 2;
-            const radius = 5.5 * this.size;
-            const turret = MeshBuilder.CreateSphere(`capitalTurret${i}`, {
-                diameter: 2.2 * this.size
-            }, this.scene);
-            turret.position.set(
-                Math.cos(angle) * radius,
-                3 * this.size,
-                Math.sin(angle) * radius
-            );
-            turret.parent = root;
-
-            // Gun barrels on turrets
-            const barrel = MeshBuilder.CreateCylinder(`turretBarrel${i}`, {
-                diameter: 0.4 * this.size,
-                height: 2 * this.size
-            }, this.scene);
-            barrel.position.set(
-                Math.cos(angle) * (radius + 1.5 * this.size),
-                3 * this.size,
-                Math.sin(angle) * (radius + 1.5 * this.size)
-            );
-            barrel.rotation.y = -angle + Math.PI / 2;
-            barrel.rotation.z = Math.PI / 2;
-            barrel.parent = root;
-        }
-
-        // Defensive shield emitter pylons - 6 massive structures
-        for (let i = 0; i < 6; i++) {
-            const angle = (i / 6) * Math.PI * 2;
-            const radius = 7 * this.size;
-            const pylon = MeshBuilder.CreateCylinder(`pylon${i}`, {
-                diameterTop: 0.5 * this.size,
-                diameterBottom: 1 * this.size,
-                height: 6 * this.size
-            }, this.scene);
-            pylon.position.set(
-                Math.cos(angle) * radius,
-                0,
-                Math.sin(angle) * radius
-            );
-            pylon.parent = root;
-
-            // Emitter sphere at top
-            const emitter = MeshBuilder.CreateSphere(`emitter${i}`, {
-                diameter: 1.5 * this.size
-            }, this.scene);
-            emitter.position.set(
-                Math.cos(angle) * radius,
-                3 * this.size,
-                Math.sin(angle) * radius
-            );
-            emitter.parent = root;
-        }
-
-        // Lower hull reinforcement structures
-        const lowerHull = MeshBuilder.CreateBox('lowerHull', {
-            width: 8 * this.size,
-            height: 3 * this.size,
-            depth: 13 * this.size
-        }, this.scene);
-        lowerHull.position.y = -4.5 * this.size;
-        lowerHull.parent = root;
-
-        // Keel ridge - structural spine underneath
-        const keel = MeshBuilder.CreateBox('keel', {
+        // Ventral keel structure
+        const keel = MeshBuilder.CreateBox('titanKeel', {
             width: 2 * this.size,
-            height: 2 * this.size,
-            depth: 14 * this.size
+            height: 0.8 * this.size,
+            depth: 6.5 * this.size
         }, this.scene);
-        keel.position.y = -6 * this.size;
+        keel.position.y = -1.3 * this.size;
         keel.parent = root;
 
         return root;
@@ -1083,8 +944,9 @@ export class Enemy {
 
     private createHealthBar(): Mesh {
         // Create a plane for the health bar
-        const barWidth = this.size * 3;
-        const barHeight = 0.3;
+        // Make it a consistent size regardless of ship size for better visibility
+        const barWidth = 5; // Fixed width for all ships
+        const barHeight = 0.5;
         const bar = MeshBuilder.CreatePlane('healthBar', { width: barWidth, height: barHeight }, this.scene);
 
         // Create dynamic texture for the health bar
@@ -1095,8 +957,13 @@ export class Enemy {
         material.disableLighting = true;
         material.backFaceCulling = false;
 
+        // IMPORTANT: Make health bar always render on top
+        material.zOffset = -10; // Render in front of other objects
+        material.depthFunction = 1; // Always pass depth test (LEQUAL)
+
         bar.material = material;
         bar.billboardMode = Mesh.BILLBOARDMODE_ALL; // Always face camera
+        bar.renderingGroupId = 1; // Render after main scene objects (group 0)
 
         return bar;
     }
@@ -1128,8 +995,9 @@ export class Enemy {
 
         texture.update();
 
-        // Position above ship
-        const offsetY = this.size * 2.5;
+        // Position above ship with a generous fixed offset that works for all sizes
+        // Large ships have tall spires/towers, so we need significant offset
+        const offsetY = 5 + (this.size * 2); // Base offset + size-based component
         this.healthBarMesh.position = this.position.add(new Vector3(0, offsetY, 0));
     }
 
@@ -1205,11 +1073,10 @@ export class Enemy {
         this.position.addInPlace(this.velocity.scale(deltaTime));
         this.mesh.position = this.position;
 
-        // Rotate to face target
+        // Rotate to face target (no mindless spinning)
         const directionToTarget = targetPos.subtract(this.position).normalize();
         const targetRotation = Math.atan2(directionToTarget.x, directionToTarget.z);
         this.mesh.rotation.y = targetRotation;
-        this.mesh.rotation.x += deltaTime * 0.5;
 
         // Shooting AI
         if (this.canShoot) {

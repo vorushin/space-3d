@@ -1,5 +1,6 @@
 import { Game } from '../Game';
 import { WeaponSystem } from './WeaponSystem';
+import { Vector3 } from '@babylonjs/core';
 
 export class UIManager {
     private game: Game;
@@ -67,7 +68,6 @@ export class UIManager {
                 };
 
                 // Spawn enemy of specific type
-                const Vector3 = (window as any).BABYLON.Vector3;
                 const position = new Vector3(spawnPos.x, spawnPos.y, spawnPos.z);
                 this.game.enemyManager.spawnEnemyOfType(position, type);
             });
@@ -91,6 +91,8 @@ export class UIManager {
             // Debug shortcuts
             else if (e.key === 'r' || e.key === 'R') {
                 this.game.progressionManager.addResources(1000);
+            } else if (e.key === 't' || e.key === 'T') {
+                this.spawnDebugEnemies();
             }
         });
     }

@@ -132,7 +132,8 @@ export class Player {
         const forward = this.camera.getDirection(Vector3.Forward());
         const up = this.camera.getDirection(Vector3.Up());
         const right = this.camera.getDirection(Vector3.Right());
-        const spawnOffset = forward.scale(2);
+        // Spawn projectiles further away to reduce visual impact of splash effects
+        const spawnOffset = forward.scale(10);
         const spawnPosition = this.camera.position.add(spawnOffset);
 
         // Random spread based on weapon type

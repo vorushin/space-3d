@@ -46,7 +46,7 @@ export class Game {
         this.progressionManager = new ProgressionManager(this);
         this.uiManager = new UIManager(this);
 
-        this.inputController = new InputController(this.scene, this.player, this.camera, this.uiManager, this.missileManager);
+        this.inputController = new InputController(this.scene, this.player, this.camera, this.missileManager);
 
         // Start game loop
         this.scene.onBeforeRenderObservable.add(() => {
@@ -57,7 +57,7 @@ export class Game {
             this.update(deltaTime);
         });
 
-        console.log('Game initialized! Controls: WASD (lateral), Q/E (vertical), Mouse (look), LMB (shoot), SPACE (missile), TAB (upgrades)');
+        console.log('Game initialized! Controls: WASD (lateral), Q/E (vertical), Mouse (look), LMB (shoot), SPACE (missile) | Debug: R (+resources), T (spawn enemies)');
     }
 
     private setupCamera(): void {
