@@ -176,4 +176,22 @@ export class ExplosionEffect {
             setTimeout(() => particleSystem.dispose(), 1200);
         }, 100);
     }
+
+    // Player damage screen flash - red vignette effect
+    // More appropriate for first-person perspective than sparks
+    public createPlayerDamageFlash(damageAmount: number): void {
+        const overlay = document.getElementById('damage-overlay');
+        if (!overlay) return;
+
+        // Scale intensity based on damage (0.3 to 0.8 opacity)
+        const intensity = Math.min(0.8, 0.3 + (damageAmount / 100) * 0.5);
+
+        // Flash in
+        overlay.style.opacity = intensity.toString();
+
+        // Fade out
+        setTimeout(() => {
+            overlay.style.opacity = '0';
+        }, 100);
+    }
 }

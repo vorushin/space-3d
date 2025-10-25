@@ -176,10 +176,9 @@ export class Player {
     public takeDamage(amount: number, weaponColor: Color3): void {
         this.health = Math.max(0, this.health - amount);
 
-        // Create hit spark effect blending weapon color with player ship color (cyan)
+        // Create screen flash effect instead of sparks for better first-person feel
         if (this.explosionEffect) {
-            const playerColor = new Color3(0.2, 0.8, 1);
-            this.explosionEffect.createHitSpark(this.position, weaponColor, playerColor);
+            this.explosionEffect.createPlayerDamageFlash(amount);
         }
 
         if (this.health <= 0) {
