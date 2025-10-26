@@ -171,7 +171,7 @@ export class Asteroid {
         material.diffuseColor = this.color;
 
         // Brighter, more visible with rough surface
-        material.emissiveColor = this.color.scale(0.15); // Slightly less glow with texture
+        material.emissiveColor = this.color.scale(0.35); // Brighter glow for better visibility
 
         // Ensure material is opaque
         material.alpha = 1.0;

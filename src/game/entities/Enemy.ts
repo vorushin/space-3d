@@ -5,8 +5,7 @@ import { Projectile } from './Projectile';
 import { EnemyResourceFragment } from './EnemyResourceFragment';
 import { ExplosionEffect } from '../effects/ExplosionEffect';
 import type { Squad } from './Squad';
-
-export type EnemyType = 'scout' | 'fighter' | 'heavy' | 'destroyer' | 'cruiser' | 'battleship' | 'dreadnought' | 'titan';
+import { EnemyTypeConfig, type EnemyType } from '../config/EnemyTypeConfig';
 
 export class Enemy {
     private scene: Scene;
@@ -63,13 +62,24 @@ export class Enemy {
         this.explosionEffect = explosionEffect;
 
         // Randomly select type if not specified
-        this.type = type || this.selectRandomType(difficulty);
+        this.type = type || EnemyTypeConfig.selectRandomType(difficulty);
 
         // Randomly target player or station
         this.target = Math.random() > 0.5 ? 'player' : 'station';
 
         // Configure stats based on type and difficulty
-        this.configureByType(difficulty);
+        const stats = EnemyTypeConfig.getStats(this.type, difficulty);
+        this.size = stats.size;
+        this.health = stats.health;
+        this.maxHealth = stats.health;
+        this.speed = stats.speed;
+        this.collisionDamage = stats.collisionDamage;
+        this.resourceValue = stats.resourceValue;
+        this.canShoot = stats.canShoot;
+        this.weaponDamage = stats.weaponDamage;
+        this.fireRate = stats.fireRate;
+        this.weaponAccuracy = stats.weaponAccuracy;
+        this.shootRange = stats.shootRange;
 
         this.mesh = this.createEnemyMesh();
         this.mesh.position = position;
@@ -80,165 +90,6 @@ export class Enemy {
         this.healthBarMesh.setEnabled(false);
     }
 
-    private selectRandomType(difficulty: number): EnemyType {
-        const roll = Math.random();
-
-        // More dangerous types appear earlier and more frequently as player upgrades
-        if (difficulty < 1.2) {
-            // Early game: scouts and fighters (50/50)
-            return roll > 0.5 ? 'scout' : 'fighter';
-        } else if (difficulty < 1.5) {
-            // Early-mid: introduce heavies early (scouts/fighters/heavies)
-            if (roll < 0.25) return 'scout';
-            if (roll < 0.55) return 'fighter';
-            return 'heavy';
-        } else if (difficulty < 2.0) {
-            // Mid-early: more heavies, introduce destroyers (fighter/heavy/destroyer)
-            if (roll < 0.25) return 'fighter';
-            if (roll < 0.6) return 'heavy';
-            return 'destroyer';
-        } else if (difficulty < 2.5) {
-            // Mid: introduce cruisers (heavy/destroyer/cruiser)
-            if (roll < 0.3) return 'heavy';
-            if (roll < 0.65) return 'destroyer';
-            return 'cruiser';
-        } else if (difficulty < 3.5) {
-            // Mid-late: introduce battleships (destroyer/cruiser/battleship)
-            if (roll < 0.25) return 'destroyer';
-            if (roll < 0.6) return 'cruiser';
-            return 'battleship';
-        } else if (difficulty < 5.0) {
-            // Late: introduce dreadnoughts (cruiser/battleship/dreadnought)
-            if (roll < 0.25) return 'cruiser';
-            if (roll < 0.6) return 'battleship';
-            return 'dreadnought';
-        } else if (difficulty < 7.0) {
-            // Very late: introduce titans (battleship/dreadnought/titan)
-            if (roll < 0.3) return 'battleship';
-            if (roll < 0.7) return 'dreadnought';
-            return 'titan';
-        } else {
-            // End game: mostly capital ships (dreadnought/titan dominant)
-            if (roll < 0.4) return 'dreadnought';
-            return 'titan';
-        }
-    }
-
-    private configureByType(difficulty: number): void {
-        switch (this.type) {
-            case 'scout':
-                // Fast, weak, light weapons - bigger for better visibility
-                this.size = 1.5;
-                this.health = 20 * difficulty;
-                this.speed = 25 + (difficulty * 3);
-                this.collisionDamage = 5 * difficulty;
-                this.resourceValue = Math.floor(3 * difficulty);
-                this.canShoot = true;
-                this.weaponDamage = 5 * difficulty;
-                this.fireRate = 1.5;
-                this.weaponAccuracy = 0.7;
-                this.shootRange = 50;
-                break;
-
-            case 'fighter':
-                // Balanced, light weapons - bigger
-                this.size = 1.8;
-                this.health = 40 * difficulty;
-                this.speed = 18 + (difficulty * 2);
-                this.collisionDamage = 10 * difficulty;
-                this.resourceValue = Math.floor(7 * difficulty);
-                this.canShoot = true;
-                this.weaponDamage = 8 * difficulty;
-                this.fireRate = 2;
-                this.weaponAccuracy = 0.85;
-                break;
-
-            case 'heavy':
-                // Slow, tanky, medium weapons - bigger
-                this.size = 2.2;
-                this.health = 80 * difficulty;
-                this.speed = 12 + (difficulty * 1.5);
-                this.collisionDamage = 20 * difficulty;
-                this.resourceValue = Math.floor(12 * difficulty);
-                this.canShoot = true;
-                this.weaponDamage = 15 * difficulty;
-                this.fireRate = 2.5;
-                this.weaponAccuracy = 0.75;
-                break;
-
-            case 'destroyer':
-                // Very slow, heavily armored, powerful weapons
-                this.size = 1.8;
-                this.health = 150 * difficulty;
-                this.speed = 8 + difficulty;
-                this.collisionDamage = 30 * difficulty;
-                this.resourceValue = Math.floor(20 * difficulty);
-                this.canShoot = true;
-                this.weaponDamage = 25 * difficulty;
-                this.fireRate = 1.5;
-                this.shootRange = 80;
-                this.weaponAccuracy = 0.9;
-                break;
-
-            case 'cruiser':
-                // Large capital ship - balanced powerhouse
-                this.size = 2.2;
-                this.health = 300 * difficulty;
-                this.speed = 6 + difficulty * 0.8;
-                this.collisionDamage = 50 * difficulty;
-                this.resourceValue = Math.floor(35 * difficulty);
-                this.canShoot = true;
-                this.weaponDamage = 40 * difficulty;
-                this.fireRate = 1.2;
-                this.shootRange = 90;
-                this.weaponAccuracy = 0.92;
-                break;
-
-            case 'battleship':
-                // Massive warship - slow but devastating
-                this.size = 2.6;
-                this.health = 600 * difficulty;
-                this.speed = 4 + difficulty * 0.5;
-                this.collisionDamage = 80 * difficulty;
-                this.resourceValue = Math.floor(60 * difficulty);
-                this.canShoot = true;
-                this.weaponDamage = 70 * difficulty;
-                this.fireRate = 1.0;
-                this.shootRange = 100;
-                this.weaponAccuracy = 0.94;
-                break;
-
-            case 'dreadnought':
-                // Colossal fortress - massive enemy
-                this.size = 3.0;
-                this.health = 1200 * difficulty;
-                this.speed = 3 + difficulty * 0.3;
-                this.collisionDamage = 150 * difficulty;
-                this.resourceValue = Math.floor(100 * difficulty);
-                this.canShoot = true;
-                this.weaponDamage = 120 * difficulty;
-                this.fireRate = 0.8;
-                this.shootRange = 120;
-                this.weaponAccuracy = 0.96;
-                break;
-
-            case 'titan':
-                // Apocalyptic mega-fortress - large but manageable
-                this.size = 3.5;
-                this.health = 3000 * difficulty;
-                this.speed = 2 + difficulty * 0.2;
-                this.collisionDamage = 300 * difficulty;
-                this.resourceValue = Math.floor(250 * difficulty);
-                this.canShoot = true;
-                this.weaponDamage = 200 * difficulty;
-                this.fireRate = 0.6;
-                this.shootRange = 150;
-                this.weaponAccuracy = 0.98;
-                break;
-        }
-
-        this.maxHealth = this.health;
-    }
 
     private createEnemyMesh(): Mesh {
         let shipRoot: Mesh;
@@ -273,54 +124,16 @@ export class Enemy {
                 shipRoot = MeshBuilder.CreateIcoSphere('enemy', { radius: this.size, subdivisions: 1 }, this.scene);
         }
 
-        // IMPORTANT: Apply scaling to match player ship scale
-        // Problem: Mesh functions use different multipliers (scout uses ~2.5x, titan uses ~10x)
-        // Solution: Scale inversely with size, but with a gentler curve to keep small ships visible
-        // Formula: scale = 1.0 / (size^0.7) gives good balance across all sizes
-        // Scout (1.5): 1.0 / 1.5^0.7 = 0.77 scale
-        // Heavy (2.2): 1.0 / 2.2^0.7 = 0.59 scale
-        // Titan (3.5): 1.0 / 3.5^0.7 = 0.43 scale
-        const scaleFactor = 1.0 / Math.pow(this.size, 0.7);
+        // Apply scaling using centralized formula
+        const scaleFactor = EnemyTypeConfig.getScaleFactor(this.size);
         shipRoot.scaling.setAll(scaleFactor);
 
         const material = new StandardMaterial('enemyMaterial', this.scene);
 
-        // Different colors based on type - darker and more menacing for bigger ships
-        switch (this.type) {
-            case 'scout':
-                material.diffuseColor = new Color3(1, 0.5, 0.3);
-                material.emissiveColor = new Color3(0.4, 0.2, 0);
-                break;
-            case 'fighter':
-                material.diffuseColor = new Color3(1, 0.2, 0.2);
-                material.emissiveColor = new Color3(0.5, 0, 0);
-                break;
-            case 'heavy':
-                material.diffuseColor = new Color3(0.8, 0.1, 0.3);
-                material.emissiveColor = new Color3(0.4, 0, 0.1);
-                break;
-            case 'destroyer':
-                material.diffuseColor = new Color3(0.6, 0, 0.2);
-                material.emissiveColor = new Color3(0.3, 0, 0.1);
-                break;
-            case 'cruiser':
-                material.diffuseColor = new Color3(0.5, 0, 0.3);
-                material.emissiveColor = new Color3(0.25, 0, 0.15);
-                break;
-            case 'battleship':
-                material.diffuseColor = new Color3(0.4, 0, 0.4);
-                material.emissiveColor = new Color3(0.2, 0, 0.2);
-                break;
-            case 'dreadnought':
-                material.diffuseColor = new Color3(0.3, 0, 0.5);
-                material.emissiveColor = new Color3(0.15, 0, 0.25);
-                break;
-            case 'titan':
-                material.diffuseColor = new Color3(0.2, 0, 0.6);
-                material.emissiveColor = new Color3(0.1, 0, 0.35);
-                break;
-        }
-
+        // Get colors from config
+        const stats = EnemyTypeConfig.getStats(this.type, 1); // difficulty 1 for base colors
+        material.diffuseColor = stats.color;
+        material.emissiveColor = stats.emissiveColor;
         material.specularColor = new Color3(1, 0.5, 0.5);
 
         // Apply material to root and all children
@@ -1081,24 +894,9 @@ export class Enemy {
     }
 
     private updateCombatMovement(deltaTime: number, targetPos: Vector3, distance: number): void {
-        // Determine optimal combat range based on ship type
-        let optimalRange: number;
-        switch (this.type) {
-            case 'scout':
-                optimalRange = 40;
-                break;
-            case 'fighter':
-                optimalRange = 50;
-                break;
-            case 'heavy':
-                optimalRange = 55;
-                break;
-            case 'destroyer':
-                optimalRange = 60;
-                break;
-            default:
-                optimalRange = 50;
-        }
+        // Get optimal combat range from config
+        const stats = EnemyTypeConfig.getStats(this.type, 1); // Use difficulty 1 for base stats
+        const optimalRange = stats.optimalRange;
 
         // Movement AI: maintain optimal shooting distance with smooth transitions
         const rangeDeadzone = 5; // Wider deadzone to prevent jitter
@@ -1215,27 +1013,9 @@ export class Enemy {
     }
 
     public getColor(): Color3 {
-        // Return the ship's color based on type
-        switch (this.type) {
-            case 'scout':
-                return new Color3(1, 0.5, 0.3);
-            case 'fighter':
-                return new Color3(1, 0.2, 0.2);
-            case 'heavy':
-                return new Color3(0.8, 0.1, 0.3);
-            case 'destroyer':
-                return new Color3(0.6, 0, 0.2);
-            case 'cruiser':
-                return new Color3(0.5, 0, 0.3);
-            case 'battleship':
-                return new Color3(0.4, 0, 0.4);
-            case 'dreadnought':
-                return new Color3(0.3, 0, 0.5);
-            case 'titan':
-                return new Color3(0.2, 0, 0.6);
-            default:
-                return new Color3(1, 0, 0);
-        }
+        // Get color from config
+        const stats = EnemyTypeConfig.getStats(this.type, 1);
+        return stats.color;
     }
 
     public getSize(): number {
@@ -1243,15 +1023,8 @@ export class Enemy {
     }
 
     public getCollisionRadius(): number {
-        // Return the actual collision radius based on the scaled mesh
-        // The mesh is scaled down by 1.0 / (size^0.7)
-        const scaleFactor = 1.0 / Math.pow(this.size, 0.7);
-        const visualSize = this.size * scaleFactor;
-
-        // Use a reasonable multiplier based on the actual mesh bounds
-        // Most ship meshes extend about 2-3 units from center in their largest dimension
-        // After scaling, we need a smaller multiplier to match visual appearance
-        return visualSize * 2.0;
+        // Use centralized collision radius calculation
+        return EnemyTypeConfig.getCollisionRadius(this.size);
     }
 
     public breakIntoFragments(): EnemyResourceFragment[] {

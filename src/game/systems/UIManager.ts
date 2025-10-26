@@ -1,6 +1,6 @@
 import { Game } from '../Game';
 import { WeaponSystem } from './WeaponSystem';
-import { Vector3 } from '@babylonjs/core';
+import { Vector3, Matrix } from '@babylonjs/core';
 
 export class UIManager {
     private game: Game;
@@ -130,6 +130,7 @@ export class UIManager {
         // Update corner HUD elements
         this.updateHealthDisplay('health', playerHealth);
         this.updateHealthDisplay('station-health', stationHealth);
+        this.updateElement('station-level-hud', pm.stationLevel);
         this.updateElement('resources', pm.resources);
         this.updateElement('enemies', this.game.enemyManager.enemies.length);
         this.updateElement('missile-count', this.game.missileManager.getMissileCount());
@@ -151,6 +152,9 @@ export class UIManager {
 
         // Update quick upgrade hints
         this.updateQuickUpgradeHints();
+
+        // Update station direction indicator
+        this.updateStationIndicator();
 
         // Update all upgrade panels (in menu)
         this.updateShipWeaponsPanel();
@@ -483,6 +487,94 @@ export class UIManager {
         const element = document.getElementById(id);
         if (element) {
             element.textContent = value.toString();
+        }
+    }
+
+    private updateStationIndicator(): void {
+        const indicator = document.getElementById('station-indicator');
+        if (!indicator) return;
+
+        const camera = this.game.scene.activeCamera;
+        if (!camera) return;
+
+        const stationPos = this.game.station.position;
+        const engine = this.game.scene.getEngine();
+
+        // Get matrices for projection
+        const worldMatrix = Matrix.Identity(); // Station position is already in world space
+        const transformMatrix = camera.getViewMatrix().multiply(camera.getProjectionMatrix());
+        const viewport = camera.viewport.toGlobal(
+            engine.getRenderWidth(),
+            engine.getRenderHeight()
+        );
+
+        // Project station position to screen space
+        const screenPos = Vector3.Project(
+            stationPos,
+            worldMatrix,
+            transformMatrix,
+            viewport
+        );
+
+        // Check if station is behind camera or on screen
+        const margin = 100; // Distance from edge
+        const width = engine.getRenderWidth();
+        const height = engine.getRenderHeight();
+
+        const isOnScreen =
+            screenPos.z > 0 &&
+            screenPos.z < 1 &&
+            screenPos.x > margin &&
+            screenPos.x < width - margin &&
+            screenPos.y > margin &&
+            screenPos.y < height - margin;
+
+        if (isOnScreen) {
+            // Station is visible, hide indicator
+            indicator.style.display = 'none';
+        } else {
+            // Station is off-screen, show indicator at edge
+            indicator.style.display = 'block';
+
+            // Calculate direction from center to station (screen space)
+            const centerX = width / 2;
+            const centerY = height / 2;
+
+            let dirX = screenPos.x - centerX;
+            let dirY = screenPos.y - centerY;
+
+            // If station is behind camera, invert direction
+            if (screenPos.z <= 0 || screenPos.z > 1) {
+                dirX = -dirX;
+                dirY = -dirY;
+            }
+
+            // Calculate angle for arrow rotation
+            const angle = Math.atan2(dirY, dirX);
+
+            // Clamp position to screen edges with margin
+            const edgeMargin = 50;
+            let posX = centerX + dirX;
+            let posY = centerY + dirY;
+
+            // Find intersection with screen bounds
+            const maxX = width - edgeMargin;
+            const maxY = height - edgeMargin;
+            const minX = edgeMargin;
+            const minY = edgeMargin;
+
+            // Scale to edge of screen
+            const scaleX = dirX > 0 ? (maxX - centerX) / dirX : (minX - centerX) / dirX;
+            const scaleY = dirY > 0 ? (maxY - centerY) / dirY : (minY - centerY) / dirY;
+            const scale = Math.min(Math.abs(scaleX), Math.abs(scaleY));
+
+            posX = centerX + dirX * scale;
+            posY = centerY + dirY * scale;
+
+            // Position and rotate indicator
+            indicator.style.left = `${posX}px`;
+            indicator.style.top = `${posY}px`;
+            indicator.style.transform = `translate(-50%, -50%) rotate(${angle}rad)`;
         }
     }
 }

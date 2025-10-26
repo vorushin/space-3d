@@ -1,16 +1,19 @@
-import { Scene, Vector3, Color4, Color3 } from '@babylonjs/core';
-import { Enemy, EnemyType } from '../entities/Enemy';
+import { Scene, Vector3, Color3 } from '@babylonjs/core';
+import { Enemy } from '../entities/Enemy';
 import { EnemyResourceFragment } from '../entities/EnemyResourceFragment';
 import { Player } from '../entities/Player';
 import { Station } from '../entities/Station';
 import { ExplosionEffect } from '../effects/ExplosionEffect';
 import { Squad } from '../entities/Squad';
+import { EnemyDeathHandler } from '../handlers/EnemyDeathHandler';
+import type { EnemyType } from '../config/EnemyTypeConfig';
 
 export class EnemyManager {
     private scene: Scene;
     private player: Player;
     private station: Station;
     private explosionEffect: ExplosionEffect;
+    private deathHandler: EnemyDeathHandler;
 
     public enemies: Enemy[] = [];
     public squads: Squad[] = [];
@@ -26,6 +29,7 @@ export class EnemyManager {
         this.player = player;
         this.station = station;
         this.explosionEffect = explosionEffect;
+        this.deathHandler = new EnemyDeathHandler(explosionEffect);
     }
 
     public update(deltaTime: number, defensiveStrength: number): void {
@@ -72,65 +76,10 @@ export class EnemyManager {
                     enemy.squad.removeEnemy(enemy);
                 }
 
-                // Create explosion effect based on ship size
-                const color = enemy.getColor();
-                const color4 = new Color4(color.r, color.g, color.b, 1);
-
-                // Scale explosions based on ship type
-                if (enemy.type === 'scout') {
-                    this.explosionEffect.createExplosion(enemy.position, color4, 0.7);
-                } else if (enemy.type === 'fighter') {
-                    this.explosionEffect.createExplosion(enemy.position, color4, 1.0);
-                } else if (enemy.type === 'heavy') {
-                    this.explosionEffect.createExplosion(enemy.position, color4, 1.5);
-                } else if (enemy.type === 'destroyer') {
-                    this.explosionEffect.createLargeExplosion(enemy.position, color4);
-                } else if (enemy.type === 'cruiser') {
-                    // Large explosion for cruiser
-                    this.explosionEffect.createLargeExplosion(enemy.position, color4);
-                } else if (enemy.type === 'battleship') {
-                    // Multiple large explosions for battleship
-                    this.explosionEffect.createLargeExplosion(enemy.position, color4);
-                    setTimeout(() => {
-                        this.explosionEffect.createExplosion(enemy.position, color4, 2.5);
-                    }, 100);
-                } else if (enemy.type === 'dreadnought') {
-                    // Massive multi-stage explosion for dreadnought
-                    this.explosionEffect.createLargeExplosion(enemy.position, color4);
-                    setTimeout(() => {
-                        this.explosionEffect.createLargeExplosion(enemy.position, color4);
-                    }, 150);
-                    setTimeout(() => {
-                        this.explosionEffect.createExplosion(enemy.position, color4, 3.0);
-                    }, 300);
-                } else if (enemy.type === 'titan') {
-                    // Apocalyptic explosion sequence for titan
-                    this.explosionEffect.createLargeExplosion(enemy.position, color4);
-                    setTimeout(() => {
-                        this.explosionEffect.createLargeExplosion(enemy.position, color4);
-                    }, 100);
-                    setTimeout(() => {
-                        this.explosionEffect.createLargeExplosion(enemy.position, color4);
-                    }, 200);
-                    setTimeout(() => {
-                        this.explosionEffect.createExplosion(enemy.position, color4, 4.0);
-                    }, 350);
-                    setTimeout(() => {
-                        this.explosionEffect.createExplosion(enemy.position, color4, 3.5);
-                    }, 500);
-                }
-
-                // Create resource fragments
-                const newFragments = enemy.breakIntoFragments();
+                // Handle death: explosions and fragments
+                const newFragments = this.deathHandler.handleDeath(enemy);
                 this.enemyFragments.push(...newFragments);
 
-                // Clean up all projectiles from this enemy
-                for (const projectile of enemy.projectiles) {
-                    projectile.dispose();
-                }
-                enemy.projectiles = [];
-
-                enemy.dispose();
                 this.enemies.splice(i, 1);
             }
         }

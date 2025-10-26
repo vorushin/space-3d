@@ -38,20 +38,27 @@ The `Game` class (`src/game/Game.ts`) is the central coordinator that:
 
 **Entities** (`src/game/entities/`): Individual game objects with their own state, mesh, and behavior
 - `Player.ts` - Player ship (cyan), controlled by camera, shoots projectiles based on weapon level
-- `Enemy.ts` - Eight types (scout/fighter/heavy/destroyer/cruiser/battleship/dreadnought/titan) with progressive sizes and colors
-- `Station.ts` - Central base at (0,0,0), has upgradeable turrets and modules
-- `Asteroid.ts` - Three sizes (large→medium→small), split when hit, eventually break into ResourceFragments
+- `Enemy.ts` - Eight types (scout/fighter/heavy/destroyer/cruiser/battleship/dreadnought/titan), uses EnemyTypeConfig for stats
+- `Squad.ts` - Coordinates groups of enemies with formation flying and tactical states (approaching/engaging/retreating/regrouping)
+- `Station.ts` - Central space station at (0,0,0) with complex geometry (sphere hub, equatorial ring, solar panels, antenna spires), bright blue/cyan emissive lighting, upgradeable turrets and docking modules
+- `Asteroid.ts` - Three sizes (large→medium→small), split when hit, eventually break into ResourceFragments. Procedurally generated rocky textures with varied colors (brown/gray/red/ice), emissive glow (0.35 scale) for visibility
 - `Projectile.ts` - Bullets with `owner`, `color`, `penetration`, and `splashRadius` properties
 - `Missile.ts` - Self-guided homing missiles with predictive targeting and smooth tracking
 - `ResourceFragment.ts` / `EnemyResourceFragment.ts` - Collectibles with inverse-square gravity physics
 
 **Managers** (`src/game/systems/`): Handle spawning, updating, and collision detection for entity types
 - `AsteroidManager.ts` - Spawns asteroids, handles splitting logic, checks collisions with player/station/enemies
-- `EnemyManager.ts` - Spawns enemies based on difficulty, checks projectile hits, creates resource drops
+- `EnemyManager.ts` - Spawns enemy squads, manages squad lifecycle, delegates death handling to EnemyDeathHandler
 - `MissileManager.ts` - Manages missile inventory, firing, tracking, and collision detection
 - `WeaponSystem.ts` - Defines 10 weapon levels with unique stats (damage, fire rate, burst, penetration, splash)
 - `ProgressionManager.ts` - Tracks upgrade levels, calculates costs, handles sector transitions, missile purchases
-- `UIManager.ts` - Updates HUD elements, manages upgrade menu visibility, missile count, enemy breakdown display
+- `UIManager.ts` - Corner-based HUD (displays ship/station health and levels, resources, enemies, missiles), toggleable upgrade menu, quick upgrade hints ([1][2][3][4]), station direction indicator when off-screen
+
+**Configuration** (`src/game/config/`): Data-driven configuration separated from logic
+- `EnemyTypeConfig.ts` - Centralized enemy stats, scaling formulas, collision radius calculation, type selection
+
+**Handlers** (`src/game/handlers/`): Specialized behavior handlers with single responsibility
+- `EnemyDeathHandler.ts` - Handles enemy death: explosions (scaled by ship type), resource fragments, cleanup
 
 ### Key Design Patterns
 
@@ -61,12 +68,15 @@ The `Game` class (`src/game/Game.ts`) is the central coordinator that:
 - Called during `takeDamage()` with projectile color + target material color
 
 **Collision Detection**:
-- Projectile collisions: Managers iterate projectile arrays and check distances
+- Uses properly scaled collision radius via `enemy.getCollisionRadius()` for accurate hit detection
+- Collision radius calculated as: `EnemyTypeConfig.getCollisionRadius(size)` which accounts for visual scaling
+- Projectile collisions: Managers iterate projectile arrays and check distances against scaled radius
 - Missile collisions: MissileManager checks all missiles vs all enemies each frame
-- Physical collisions: AsteroidManager checks asteroid vs player/station/enemies each frame
+- Physical collisions: AsteroidManager checks asteroid vs player/station/enemies with proper radii
 - Weapon color is passed to `takeDamage()` for proper spark color blending
 - Penetrating projectiles survive hits until penetration limit exceeded
 - Splash damage applied in separate pass after direct hit (no chain reactions)
+- Splash radius calculation also uses `enemy.getCollisionRadius()` for consistency
 
 **Resource Physics**:
 - Fragments use inverse-square gravity: `a = G*M/r²`
@@ -82,17 +92,42 @@ The `Game` class (`src/game/Game.ts`) is the central coordinator that:
 
 **Enemy AI & Ship Design**:
 - Eight ship types with progressive difficulty and spaceship-like designs
-- Power law scaling: `scaleFactor = 1.0 / Math.pow(size, 0.7)` (balanced visibility across sizes)
+- All stats centralized in `EnemyTypeConfig.ts` (health, speed, damage, colors, optimal range, etc.)
+- Power law scaling: `scaleFactor = EnemyTypeConfig.getScaleFactor(size)` = `1.0 / Math.pow(size, 0.7)` (balanced visibility)
 - Entry ships: Scout (dart shape, size 1.5), Fighter (X-wing style, size 1.8), Heavy (gunship, size 2.2)
 - Capital ships: Destroyer (frigate, 1.8), Cruiser (wedge warship, 2.2), Battleship (2.6), Dreadnought (fortress, 3.0), Titan (ultimate capital ship, 3.5)
 - Ships rotate to face target only (no mindless spinning)
 - Health bars: fixed 5-unit width, renderingGroupId=1, zOffset=-10, always visible on top
 - Difficulty progression: heavies at 1.2, cruisers at 2.0, titans at 5.0
-- Maintain optimal shooting range per ship type (40-60 units)
+- Maintain optimal shooting range per ship type (configured in EnemyTypeConfig)
 - Smooth movement with deadzone (5 units) to prevent jitter
 - Strafe perpendicular to target direction
 - Speed scales with distance error for smooth approach/retreat
 - All ships feature recognizable spaceship designs: sleek fighters, massive capital ships with bridge towers, engine arrays, weapon batteries
+
+**Station Design** (`src/game/entities/Station.ts`):
+- Progressive visual evolution from small outpost to massive orbital complex
+- **Level 1**: Small 3-unit sphere core with 3 light pods (basic outpost)
+- **Level 2**: Core scales to 1.5x (4.5 units), adds equatorial ring (8-unit diameter), 3 more light pods (total 6), brighter glow (0.3, 0.4, 0.6)
+- **Level 3**: Core scales to 2x (6 units), ring expands 1.3x, adds 4 solar panel arrays, even brighter (0.35, 0.45, 0.7)
+- **Level 4**: Core scales to 2.5x (7.5 units), maximum brightness (0.4, 0.5, 0.8), adds vertical antenna spires (8 units tall) with bright red warning lights (1, 0.5, 0.5)
+- **Level 5+**: Adds docking modules - extending arms with cylindrical habitat pods and extremely bright cyan lights (0.6, 1, 1)
+- **Slow Rotation**: 0.1 rad/s for visual interest
+- **Health Bar**: 12-unit width, cyan border, appears for 3s after damage, positioned 10 units above station
+- **Turrets**: Hexagonal base, spherical head with bright red sensor eye (1, 0.5, 0.5), twin barrels with glowing cyan tips (0.5, 0.9, 1), matches station aesthetic. Positioned dynamically based on station level: `distance = 7 + (level × 0.5)`. Smoothly rotate toward targets at 3 rad/s, only fire when aimed within ~10 degrees for realistic tracking behavior
+
+**Squad System** (`src/game/entities/Squad.ts`):
+- Enemies spawn in coordinated squads of 2-9 ships (size scales with difficulty)
+- Squad states: `approaching` → `engaging` → `retreating` → `regrouping` (cycle repeats)
+- **Approaching**: Fly in formation (V/wedge/circle based on squad size), move toward target together
+- **Engaging** (8s): Break formation, attack individually with optimal combat tactics
+- **Retreating** (3s): Pull back to rally point (100 units away), reform loose formation
+- **Regrouping** (4s): Tighten formation, prepare for next attack run
+- Formation types: Small squads (≤3) use V-formation, Medium (4-6) use wedge, Large (7+) use circle
+- Each enemy tracks: `squad`, `formationTarget`, `inFormation`, `combatTarget`
+- Squads dynamically switch targets between player and station
+- When enemy dies, automatically removed from squad; empty squads cleaned up
+- Individual AI falls back to solo combat mode if not in squad
 
 ### Cross-System Communication
 
@@ -175,6 +210,16 @@ shipRoot.getChildMeshes().forEach(child => {
     child.material = material;
 });
 ```
+
+**Station Direction Indicator**:
+- Appears at screen edge when station is not visible in main view (beyond 100px margin)
+- Minimalist solid cyan triangle arrow that pulses and points toward station
+- CSS-based triangle (25px × 30px), clean design without glow effects
+- Uses Vector3.Project() to convert station world position to screen space
+- Calculates shortest path to screen edge and positions arrow accordingly
+- Handles cases where station is behind camera (inverts direction)
+- Rotates arrow using CSS transform to point in correct direction
+- Helps players navigate back to station in 6DoF movement
 
 **Debug Features**:
 - "R" key or button: Add 1000 resources
