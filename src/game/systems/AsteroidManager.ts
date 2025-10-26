@@ -82,7 +82,8 @@ export class AsteroidManager {
             let asteroidDestroyed = false;
             for (const enemy of enemies) {
                 const enemyDist = Vector3.Distance(asteroid.position, enemy.position);
-                if (enemyDist < asteroid.getCollisionRadius() + 2) {
+                const enemyCollisionRadius = enemy.getCollisionRadius();
+                if (enemyDist < asteroid.getCollisionRadius() + enemyCollisionRadius) {
                     enemy.takeDamage(asteroid.getCollisionDamage(), new Color3(0.6, 0.5, 0.4));
 
                     // Asteroid crashes into fragments (reduced yield)

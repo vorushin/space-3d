@@ -4,6 +4,7 @@ import { EnemyResourceFragment } from '../entities/EnemyResourceFragment';
 import { Player } from '../entities/Player';
 import { Station } from '../entities/Station';
 import { ExplosionEffect } from '../effects/ExplosionEffect';
+import { Squad } from '../entities/Squad';
 
 export class EnemyManager {
     private scene: Scene;
@@ -12,9 +13,10 @@ export class EnemyManager {
     private explosionEffect: ExplosionEffect;
 
     public enemies: Enemy[] = [];
+    public squads: Squad[] = [];
     public enemyFragments: EnemyResourceFragment[] = [];
     private spawnTimer: number = 0;
-    private spawnInterval: number = 8; // Base seconds between spawns
+    private spawnInterval: number = 12; // Base seconds between squad spawns (increased from 8)
     private spawnDistance: number = 150;
     private difficulty: number = 1;
     public collectedResources: number = 0;
@@ -28,12 +30,23 @@ export class EnemyManager {
 
     public update(deltaTime: number, defensiveStrength: number): void {
         // Adjust spawn rate based on defensive strength
-        const adjustedInterval = Math.max(2, this.spawnInterval - (defensiveStrength * 0.3));
+        const adjustedInterval = Math.max(4, this.spawnInterval - (defensiveStrength * 0.5));
 
         this.spawnTimer += deltaTime;
         if (this.spawnTimer >= adjustedInterval) {
-            this.spawnEnemy();
+            this.spawnSquad();
             this.spawnTimer = 0;
+        }
+
+        // Update squads
+        for (let i = this.squads.length - 1; i >= 0; i--) {
+            const squad = this.squads[i];
+            squad.update(deltaTime, this.player.position, this.station.position);
+
+            // Remove empty squads
+            if (squad.isEmpty()) {
+                this.squads.splice(i, 1);
+            }
         }
 
         // Update enemies
@@ -54,6 +67,11 @@ export class EnemyManager {
 
             // Remove if dead
             if (!enemy.isAlive) {
+                // Remove from squad if part of one
+                if (enemy.squad) {
+                    enemy.squad.removeEnemy(enemy);
+                }
+
                 // Create explosion effect based on ship size
                 const color = enemy.getColor();
                 const color4 = new Color4(color.r, color.g, color.b, 1);
@@ -168,11 +186,8 @@ export class EnemyManager {
 
             const distance = Vector3.Distance(enemy.position, projectile.position);
 
-            // Calculate collision radius based on enemy ship size
-            // Enemy ships have complex meshes that extend beyond center point
-            // Scout: ~2.5 units, Fighter: ~3.5 units, Heavy: ~5 units, Destroyer: ~7 units
-            const enemySize = enemy.getSize();
-            const enemyCollisionRadius = enemySize * 2.5; // Approximate collision radius
+            // Use the enemy's properly scaled collision radius
+            const enemyCollisionRadius = enemy.getCollisionRadius();
             const projectileRadius = 0.5; // Small buffer for projectile
             const collisionThreshold = enemyCollisionRadius + projectileRadius;
 
@@ -204,9 +219,8 @@ export class EnemyManager {
             if (!enemy.isAlive) continue;
 
             const distance = Vector3.Distance(position, enemy.position);
-            // Use proper enemy size for splash radius calculation
-            const enemySize = enemy.getSize();
-            const enemyCollisionRadius = enemySize * 2.5;
+            // Use the enemy's properly scaled collision radius
+            const enemyCollisionRadius = enemy.getCollisionRadius();
 
             if (distance < radius + enemyCollisionRadius) {
                 // Apply splash damage (don't trigger more splashes)
@@ -215,7 +229,59 @@ export class EnemyManager {
         }
     }
 
+    private spawnSquad(): void {
+        // Determine squad size based on difficulty
+        let squadSize: number;
+        if (this.difficulty < 1.5) {
+            squadSize = 2 + Math.floor(Math.random() * 2); // 2-3 ships
+        } else if (this.difficulty < 2.5) {
+            squadSize = 3 + Math.floor(Math.random() * 3); // 3-5 ships
+        } else if (this.difficulty < 4.0) {
+            squadSize = 4 + Math.floor(Math.random() * 4); // 4-7 ships
+        } else {
+            squadSize = 5 + Math.floor(Math.random() * 5); // 5-9 ships
+        }
+
+        // Spawn position - far from station
+        const angle = Math.random() * Math.PI * 2;
+        const elevation = (Math.random() - 0.5) * Math.PI * 0.3; // Less vertical spread
+
+        const spawnCenter = new Vector3(
+            Math.cos(angle) * Math.cos(elevation) * this.spawnDistance,
+            Math.sin(elevation) * this.spawnDistance,
+            Math.sin(angle) * Math.cos(elevation) * this.spawnDistance
+        );
+
+        // Create squad
+        const squad = new Squad(spawnCenter);
+        this.squads.push(squad);
+
+        // Spawn enemies in loose formation around spawn center
+        for (let i = 0; i < squadSize; i++) {
+            const offsetAngle = (i / squadSize) * Math.PI * 2;
+            const offset = new Vector3(
+                Math.cos(offsetAngle) * 15,
+                (Math.random() - 0.5) * 5,
+                Math.sin(offsetAngle) * 15
+            );
+            const enemyPos = spawnCenter.add(offset);
+
+            const enemy = new Enemy(
+                this.scene,
+                enemyPos,
+                this.player,
+                this.station,
+                this.explosionEffect,
+                this.difficulty
+            );
+
+            this.enemies.push(enemy);
+            squad.addEnemy(enemy);
+        }
+    }
+
     private spawnEnemy(): void {
+        // Legacy method - spawn solo enemy (kept for debug purposes)
         const angle = Math.random() * Math.PI * 2;
         const elevation = (Math.random() - 0.5) * Math.PI * 0.5;
 

@@ -4,6 +4,7 @@ import { Station } from './Station';
 import { Projectile } from './Projectile';
 import { EnemyResourceFragment } from './EnemyResourceFragment';
 import { ExplosionEffect } from '../effects/ExplosionEffect';
+import type { Squad } from './Squad';
 
 export type EnemyType = 'scout' | 'fighter' | 'heavy' | 'destroyer' | 'cruiser' | 'battleship' | 'dreadnought' | 'titan';
 
@@ -16,6 +17,12 @@ export class Enemy {
     private player: Player;
     private station: Station;
     private explosionEffect: ExplosionEffect;
+
+    // Squad coordination
+    public squad: Squad | null = null;
+    public formationTarget: Vector3 | null = null;
+    public inFormation: boolean = false;
+    public combatTarget: Vector3 | null = null;
 
     public health: number = 30;
     public maxHealth: number = 30;
@@ -1002,9 +1009,78 @@ export class Enemy {
     }
 
     public update(deltaTime: number): void {
-        const targetPos = this.target === 'player' ? this.player.position : this.station.position;
-        const distance = Vector3.Distance(this.position, targetPos);
+        let targetPos: Vector3;
+        let distance: number;
 
+        // Squad-based movement or individual AI
+        if (this.inFormation && this.formationTarget) {
+            // Follow formation position
+            targetPos = this.formationTarget;
+            distance = Vector3.Distance(this.position, targetPos);
+
+            const direction = targetPos.subtract(this.position);
+            if (distance > 2) {
+                direction.normalize();
+                const formationSpeed = this.speed * 0.8;
+                this.velocity = direction.scale(formationSpeed);
+                this.position.addInPlace(this.velocity.scale(deltaTime));
+            } else {
+                // At formation position, slow down
+                this.velocity.scaleInPlace(0.95);
+                this.position.addInPlace(this.velocity.scale(deltaTime));
+            }
+
+            this.mesh.position = this.position;
+
+            // Face formation direction or nearest threat
+            const combatPos = this.target === 'player' ? this.player.position : this.station.position;
+            const directionToTarget = combatPos.subtract(this.position).normalize();
+            const targetRotation = Math.atan2(directionToTarget.x, directionToTarget.z);
+            this.mesh.rotation.y = targetRotation;
+        } else if (this.combatTarget) {
+            // Individual combat mode (squad engage state)
+            targetPos = this.combatTarget;
+            distance = Vector3.Distance(this.position, targetPos);
+            this.updateCombatMovement(deltaTime, targetPos, distance);
+        } else {
+            // Standard solo AI (no squad)
+            targetPos = this.target === 'player' ? this.player.position : this.station.position;
+            distance = Vector3.Distance(this.position, targetPos);
+            this.updateCombatMovement(deltaTime, targetPos, distance);
+        }
+
+        // Shooting AI
+        if (this.canShoot) {
+            this.shootCooldown = Math.max(0, this.shootCooldown - deltaTime);
+
+            if (this.shootCooldown <= 0 && distance < this.shootRange) {
+                this.shoot();
+                this.shootCooldown = this.fireRate;
+            }
+        }
+
+        // Update projectiles
+        for (let i = this.projectiles.length - 1; i >= 0; i--) {
+            this.projectiles[i].update(deltaTime);
+            if (!this.projectiles[i].isAlive) {
+                this.projectiles[i].dispose();
+                this.projectiles.splice(i, 1);
+            }
+        }
+
+        // Update health bar visibility
+        if (this.healthBarVisible && this.healthBarMesh) {
+            this.healthBarHideTimer -= deltaTime;
+            if (this.healthBarHideTimer <= 0) {
+                this.healthBarVisible = false;
+                this.healthBarMesh.setEnabled(false);
+            } else {
+                this.updateHealthBar();
+            }
+        }
+    }
+
+    private updateCombatMovement(deltaTime: number, targetPos: Vector3, distance: number): void {
         // Determine optimal combat range based on ship type
         let optimalRange: number;
         switch (this.type) {
@@ -1073,40 +1149,10 @@ export class Enemy {
         this.position.addInPlace(this.velocity.scale(deltaTime));
         this.mesh.position = this.position;
 
-        // Rotate to face target (no mindless spinning)
+        // Rotate to face target
         const directionToTarget = targetPos.subtract(this.position).normalize();
         const targetRotation = Math.atan2(directionToTarget.x, directionToTarget.z);
         this.mesh.rotation.y = targetRotation;
-
-        // Shooting AI
-        if (this.canShoot) {
-            this.shootCooldown = Math.max(0, this.shootCooldown - deltaTime);
-
-            if (this.shootCooldown <= 0 && distance < this.shootRange) {
-                this.shoot();
-                this.shootCooldown = this.fireRate;
-            }
-        }
-
-        // Update projectiles
-        for (let i = this.projectiles.length - 1; i >= 0; i--) {
-            this.projectiles[i].update(deltaTime);
-            if (!this.projectiles[i].isAlive) {
-                this.projectiles[i].dispose();
-                this.projectiles.splice(i, 1);
-            }
-        }
-
-        // Update health bar visibility
-        if (this.healthBarVisible && this.healthBarMesh) {
-            this.healthBarHideTimer -= deltaTime;
-            if (this.healthBarHideTimer <= 0) {
-                this.healthBarVisible = false;
-                this.healthBarMesh.setEnabled(false);
-            } else {
-                this.updateHealthBar();
-            }
-        }
     }
 
     private shoot(): void {
@@ -1194,6 +1240,18 @@ export class Enemy {
 
     public getSize(): number {
         return this.size;
+    }
+
+    public getCollisionRadius(): number {
+        // Return the actual collision radius based on the scaled mesh
+        // The mesh is scaled down by 1.0 / (size^0.7)
+        const scaleFactor = 1.0 / Math.pow(this.size, 0.7);
+        const visualSize = this.size * scaleFactor;
+
+        // Use a reasonable multiplier based on the actual mesh bounds
+        // Most ship meshes extend about 2-3 units from center in their largest dimension
+        // After scaling, we need a smaller multiplier to match visual appearance
+        return visualSize * 2.0;
     }
 
     public breakIntoFragments(): EnemyResourceFragment[] {
