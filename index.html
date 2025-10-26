@@ -28,43 +28,123 @@
             bottom: 0;
             pointer-events: none;
             color: #0f0;
-            text-shadow: 0 0 5px #0f0;
+            text-shadow: 0 0 3px rgba(0, 255, 0, 0.5);
         }
 
-        #hud {
+        /* Corner HUD Elements - Compact Design */
+        .hud-corner {
             position: absolute;
-            top: 20px;
-            left: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid #0f0;
+            border-radius: 3px;
+            padding: 8px 12px;
+            font-size: 12px;
+            backdrop-filter: blur(3px);
         }
 
-        #stats {
-            background: rgba(0, 0, 0, 0.7);
-            padding: 15px;
-            border: 2px solid #0f0;
-            border-radius: 5px;
+        #top-left-hud {
+            top: 15px;
+            left: 15px;
+        }
+
+        #bottom-left-hud {
+            bottom: 15px;
+            left: 15px;
+        }
+
+        #bottom-right-hud {
+            bottom: 15px;
+            right: 15px;
+            text-align: right;
         }
 
         .stat-line {
-            margin: 5px 0;
-            font-size: 14px;
+            margin: 3px 0;
+            font-size: 11px;
+            line-height: 1.4;
         }
 
-        /* Left side upgrade panels */
-        #left-upgrades {
+        .stat-label {
+            color: #888;
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-value {
+            color: #0f0;
+            font-weight: bold;
+            font-size: 13px;
+        }
+
+        .stat-value.warning {
+            color: #ff8800;
+        }
+
+        .stat-value.critical {
+            color: #f00;
+            animation: blink 0.5s infinite;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.3; }
+        }
+
+        /* Upgrade Menu - Toggleable Overlay */
+        #upgrade-menu {
             position: absolute;
-            bottom: 20px;
-            left: 20px;
-            display: flex;
-            flex-direction: column;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            border: 2px solid #0f0;
+            border-radius: 5px;
+            padding: 20px;
+            pointer-events: auto;
+            display: none;
+            max-width: 90vw;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 0 30px rgba(0, 255, 0, 0.3);
+        }
+
+        #upgrade-menu.visible {
+            display: block;
+        }
+
+        #upgrade-menu-header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #0f0;
+        }
+
+        #upgrade-menu-title {
+            font-size: 18px;
+            color: #0f0;
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        #upgrade-menu-hint {
+            font-size: 10px;
+            color: #888;
+            margin: 5px 0 0 0;
+        }
+
+        #upgrade-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
             gap: 15px;
         }
 
         .upgrade-panel {
-            background: rgba(0, 0, 0, 0.85);
+            background: rgba(0, 0, 0, 0.7);
             border: 2px solid #0f0;
             border-radius: 5px;
             padding: 12px;
-            min-width: 220px;
             pointer-events: auto;
         }
 
@@ -176,190 +256,149 @@
             text-align: center;
         }
 
-        #sector-info {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 15px;
-            border: 2px solid #0f0;
-            border-radius: 5px;
-        }
-
-        /* Right side panels */
-        #right-panels {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-
-        .info-panel {
-            background: rgba(0, 0, 0, 0.85);
-            border: 2px solid #0af;
-            border-radius: 5px;
-            padding: 12px;
-            min-width: 220px;
-            color: #0af;
-        }
-
-        .info-panel h3 {
-            margin: 0 0 10px 0;
-            font-size: 12px;
-            color: #0af;
-            text-transform: uppercase;
-            border-bottom: 1px solid #0af;
-            padding-bottom: 5px;
-        }
-
         .objective-item {
-            font-size: 11px;
-            margin: 5px 0;
-            padding-left: 15px;
-            position: relative;
-        }
-
-        .objective-item::before {
-            content: '○';
-            position: absolute;
-            left: 0;
-        }
-
-        .objective-item.completed::before {
-            content: '✓';
-            color: #0f0;
+            font-size: 10px;
+            margin: 2px 0;
         }
 
         .objective-item.completed {
             color: #0f0;
-            text-decoration: line-through;
         }
 
-        .objective-title {
-            color: #ff8800;
-            font-weight: bold;
-            font-size: 13px;
-            margin-bottom: 8px;
-        }
-
-        #upgrade-menu {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.9);
-            padding: 20px;
-            border: 2px solid #0f0;
-            border-radius: 5px;
-            pointer-events: auto;
-            display: none;
-        }
-
-        .upgrade-btn {
-            background: #000;
-            color: #0f0;
-            border: 2px solid #0f0;
-            padding: 10px 20px;
-            margin: 5px;
-            cursor: pointer;
-            font-family: 'Courier New', monospace;
-            font-size: 14px;
-            transition: all 0.2s;
-        }
-
-        .upgrade-btn:hover {
-            background: #0f0;
-            color: #000;
-        }
-
-        .upgrade-btn:disabled {
-            opacity: 0.3;
-            cursor: not-allowed;
-        }
-
-        #crosshair {
+        /* Enhanced Crosshair */
+        #crosshair-container {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 20px;
-            height: 20px;
+        }
+
+        #crosshair {
+            width: 24px;
+            height: 24px;
             border: 2px solid #0f0;
             border-radius: 50%;
-            box-shadow: 0 0 10px #0f0;
+            box-shadow: 0 0 8px rgba(0, 255, 0, 0.5);
+            position: relative;
         }
 
         #crosshair::before, #crosshair::after {
             content: '';
             position: absolute;
             background: #0f0;
+            box-shadow: 0 0 3px #0f0;
         }
 
         #crosshair::before {
             width: 2px;
-            height: 8px;
-            top: -10px;
+            height: 10px;
+            top: -12px;
             left: 50%;
             transform: translateX(-50%);
         }
 
         #crosshair::after {
-            width: 8px;
+            width: 10px;
             height: 2px;
-            left: -10px;
+            left: -12px;
             top: 50%;
             transform: translateY(-50%);
         }
 
-        /* Debug panel */
+
+        /* Debug panel - Minimized */
         #debug-panel {
             position: absolute;
-            top: 20px;
+            bottom: 15px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.9);
-            border: 2px solid #f0f;
-            border-radius: 5px;
-            padding: 10px 15px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid #f0f;
+            border-radius: 3px;
+            padding: 5px 10px;
             pointer-events: auto;
             color: #f0f;
+            font-size: 9px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
         }
 
-        #debug-panel h3 {
-            margin: 0 0 8px 0;
-            font-size: 11px;
-            text-transform: uppercase;
-            border-bottom: 1px solid #f0f;
-            padding-bottom: 4px;
+        .debug-info {
+            opacity: 0.6;
         }
 
         .debug-button {
-            background: #000;
+            background: transparent;
             color: #f0f;
             border: 1px solid #f0f;
-            padding: 5px 10px;
-            margin: 3px 0;
+            padding: 3px 8px;
             cursor: pointer;
             font-family: 'Courier New', monospace;
-            font-size: 11px;
-            border-radius: 3px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
+            font-size: 9px;
+            border-radius: 2px;
             transition: all 0.2s;
-            width: 100%;
         }
 
         .debug-button:hover {
             background: #f0f;
             color: #000;
-            box-shadow: 0 0 10px #f0f;
         }
 
-        .debug-button .shortcut-key {
-            background: rgba(255, 0, 255, 0.2);
+        /* Upgrade menu hint near weapon UI */
+        #upgrade-hint {
+            position: absolute;
+            bottom: 100px;
+            left: 17px;
+            font-size: 9px;
+            color: #888;
+            pointer-events: none;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 4px 8px;
+            border-radius: 3px;
+            border: 1px solid rgba(0, 255, 0, 0.3);
+            z-index: 10;
+        }
+
+        #upgrade-hint .key {
+            color: #0f0;
+            font-weight: bold;
+            background: rgba(0, 255, 0, 0.1);
+            padding: 1px 4px;
+            border-radius: 2px;
+            border: 1px solid rgba(0, 255, 0, 0.3);
+        }
+
+        /* Quick upgrade hints */
+        .quick-upgrade-hint {
+            display: none;
+            font-size: 9px;
+            color: #ff8800;
+            font-weight: bold;
+            background: rgba(255, 136, 0, 0.2);
+            padding: 1px 5px;
+            border-radius: 2px;
+            border: 1px solid rgba(255, 136, 0, 0.5);
+            animation: pulse-orange 1.5s infinite;
+            pointer-events: none;
+            margin-left: 4px;
+            margin-right: 2px;
+            vertical-align: middle;
+        }
+
+        .quick-upgrade-hint.visible {
+            display: inline-block;
+        }
+
+        @keyframes pulse-orange {
+            0%, 100% {
+                box-shadow: 0 0 3px rgba(255, 136, 0, 0.3);
+                opacity: 1;
+            }
+            50% {
+                box-shadow: 0 0 8px rgba(255, 136, 0, 0.6);
+                opacity: 0.8;
+            }
         }
     </style>
 </head>
@@ -367,118 +406,149 @@
     <canvas id="renderCanvas"></canvas>
 
     <div id="ui">
-        <!-- Top Left: Ship Status -->
-        <div id="hud">
-            <div id="stats">
-                <div class="stat-line">HEALTH: <span id="health">100</span>%</div>
-                <div class="stat-line">RESOURCES: <span id="resources">0</span></div>
-                <div class="stat-line">ENEMIES: <span id="enemies">0</span></div>
-                <div class="stat-line" style="font-size: 11px; color: #888; margin-left: 10px;" id="enemy-breakdown"></div>
-                <div class="stat-line">STATION HP: <span id="station-health">100</span>%</div>
-                <div class="stat-line" style="color: #ff8800; font-weight: bold; margin-top: 8px;">MISSILES: <span id="missile-count">10</span></div>
+        <!-- Top Left: Ship & Station Health + Resources -->
+        <div class="hud-corner" id="top-left-hud">
+            <div class="stat-line">
+                <span class="stat-label">Ship</span><br>
+                <span class="stat-value" id="health">100</span>%
+            </div>
+            <div class="stat-line" style="margin-top: 6px;">
+                <span class="stat-label">Station</span>
+                <span id="hint-station" class="quick-upgrade-hint">[2]</span>
+                <span id="hint-defense" class="quick-upgrade-hint">[3]</span>
+                <br>
+                <span class="stat-value" id="station-health">100</span>%
+            </div>
+            <div class="stat-line" style="margin-top: 6px;">
+                <span class="stat-label">Resources</span><br>
+                <span class="stat-value" id="resources">0</span>
             </div>
         </div>
 
-        <!-- Top Center: Debug Panel -->
+        <!-- Bottom Left: Weapon & Missiles -->
+        <div class="hud-corner" id="bottom-left-hud">
+            <div class="stat-line">
+                <span class="stat-label">Weapon</span>
+                <span id="hint-ship" class="quick-upgrade-hint">[1]</span>
+                <br>
+                <span class="stat-value" id="weapon-name" style="font-size: 11px;">Kinetic Cannon</span>
+                <span style="color: #0af; font-size: 10px;"> LVL <span id="ship-guns-lvl">1</span></span>
+            </div>
+            <div class="stat-line" style="margin-top: 6px;">
+                <span class="stat-label">Missiles</span>
+                <span id="hint-missiles" class="quick-upgrade-hint">[4]</span>
+                <span style="color: #ff8800; font-weight: bold; font-size: 13px; margin-left: 5px;" id="missile-count">10</span>
+            </div>
+        </div>
+
+        <!-- Bottom Right: Enemy Count & Objectives -->
+        <div class="hud-corner" id="bottom-right-hud">
+            <div class="stat-line">
+                <span class="stat-label">Enemies</span>
+                <span class="stat-value" id="enemies">0</span>
+            </div>
+            <div class="stat-line" style="font-size: 9px; color: #666; margin-top: 2px;" id="enemy-breakdown"></div>
+            <div class="stat-line" style="margin-top: 6px; border-top: 1px solid #333; padding-top: 4px;">
+                <span class="stat-label" style="font-size: 8px;">Mission</span><br>
+                <div id="obj-ship" class="objective-item">○ Ship: 1/3</div>
+                <div id="obj-station" class="objective-item">○ Station: 0/3</div>
+                <div id="obj-guns" class="objective-item">○ Defense: 0/3</div>
+            </div>
+        </div>
+
+        <!-- Center: Crosshair -->
+        <div id="crosshair-container">
+            <div id="crosshair"></div>
+        </div>
+
+        <!-- Bottom Left: Upgrade Hint near Weapon UI -->
+        <div id="upgrade-hint">
+            <span class="key">U</span> Upgrades
+        </div>
+
+        <!-- Bottom Center: Debug Panel -->
         <div id="debug-panel">
-            <h3>Debug</h3>
-            <button class="debug-button" id="debug-add-resources">
-                <span class="shortcut-key">R</span>
-                <span>+1000 Resources</span>
-            </button>
-            <button class="debug-button" id="debug-spawn-enemies">
-                <span class="shortcut-key">T</span>
-                <span>Spawn All Enemy Types</span>
-            </button>
+            <span class="debug-info">Debug:</span>
+            <button class="debug-button" id="debug-add-resources">R: +1k</button>
+            <button class="debug-button" id="debug-spawn-enemies">T: Spawn</button>
         </div>
 
-        <!-- Top Right: Sector Info -->
-        <div id="sector-info">
-            <div class="stat-line"><strong><span id="sector-name">ASTEROID BELT</span></strong></div>
-            <div class="stat-line" style="color: #0af; margin-top: 5px;">SECTOR <span id="sector">3</span></div>
-            <div class="stat-line" style="margin-top: 8px; font-size: 12px; color: #888;">RESOURCES</div>
-            <div class="stat-line" style="color: #0af; font-size: 20px; font-weight: bold;"><span id="resources-large">144</span></div>
-        </div>
+        <!-- Hidden elements for UIManager compatibility -->
+        <span id="sector-name" style="display: none;"></span>
+        <span id="sector" style="display: none;"></span>
 
-        <!-- Bottom Left: Upgrade Panels -->
-        <div id="left-upgrades">
-            <!-- Ship Weapons Panel -->
-            <div class="upgrade-panel" id="ship-weapons-panel">
-                <div class="upgrade-header">
-                    <span class="upgrade-name" id="weapon-name">Triple Shot</span>
-                    <span class="upgrade-level">LVL <span id="ship-guns-lvl">4</span></span>
-                </div>
-                <div class="progress-container">
-                    <div class="progress-bar" id="ship-progress" style="width: 35%;"></div>
-                    <div class="progress-text" id="ship-progress-text">144 / 411</div>
-                </div>
-                <button class="upgrade-button" id="upgrade-ship-btn">
-                    <span class="shortcut-key">1</span>
-                    <span id="ship-btn-text">Upgrade</span>
-                </button>
+        <!-- Upgrade Menu Overlay (Hidden by default) -->
+        <div id="upgrade-menu">
+            <div id="upgrade-menu-header">
+                <h2 id="upgrade-menu-title">Upgrades</h2>
+                <p id="upgrade-menu-hint">Press U to close | Use number keys 1-4 for quick upgrades</p>
             </div>
+            <div id="upgrade-grid">
+                <!-- Ship Weapons Panel -->
+                <div class="upgrade-panel" id="ship-weapons-panel">
+                    <div class="upgrade-header">
+                        <span class="upgrade-name" id="weapon-name-panel">Kinetic Cannon</span>
+                        <span class="upgrade-level">LVL <span id="ship-guns-lvl-panel">1</span></span>
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-bar" id="ship-progress" style="width: 0%;"></div>
+                        <div class="progress-text" id="ship-progress-text">0 / 100</div>
+                    </div>
+                    <button class="upgrade-button" id="upgrade-ship-btn">
+                        <span class="shortcut-key">1</span>
+                        <span id="ship-btn-text">Upgrade</span>
+                    </button>
+                </div>
 
-            <!-- Station Panel -->
-            <div class="upgrade-panel disabled" id="station-panel">
-                <div class="upgrade-header">
-                    <span class="upgrade-name">No Station</span>
-                    <span class="upgrade-level">LVL <span id="station-lvl">0</span></span>
+                <!-- Station Panel -->
+                <div class="upgrade-panel disabled" id="station-panel">
+                    <div class="upgrade-header">
+                        <span class="upgrade-name">Station</span>
+                        <span class="upgrade-level">LVL <span id="station-lvl">0</span></span>
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-bar" id="station-progress" style="width: 0%;"></div>
+                        <div class="progress-text" id="station-progress-text">0 / 100</div>
+                    </div>
+                    <button class="upgrade-button" id="upgrade-station-btn">
+                        <span class="shortcut-key">2</span>
+                        <span>Build</span>
+                    </button>
                 </div>
-                <div class="progress-container">
-                    <div class="progress-bar" id="station-progress" style="width: 0%;"></div>
-                    <div class="progress-text" id="station-progress-text">144 / 100</div>
-                </div>
-                <button class="upgrade-button ready" id="upgrade-station-btn">
-                    <span class="shortcut-key">2</span>
-                    <span>+1</span>
-                </button>
-            </div>
 
-            <!-- Defense Panel -->
-            <div class="upgrade-panel disabled" id="defense-panel">
-                <div class="upgrade-header">
-                    <span class="upgrade-name">No Defense</span>
-                    <span class="upgrade-level">LVL <span id="defense-lvl">0</span></span>
+                <!-- Defense Panel -->
+                <div class="upgrade-panel disabled" id="defense-panel">
+                    <div class="upgrade-header">
+                        <span class="upgrade-name">Defense Turrets</span>
+                        <span class="upgrade-level">LVL <span id="defense-lvl">0</span></span>
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-bar" id="defense-progress" style="width: 0%;"></div>
+                        <div class="progress-text" id="defense-progress-text">0 / 75</div>
+                    </div>
+                    <button class="upgrade-button" id="upgrade-defense-btn" disabled>
+                        <span class="shortcut-key">3</span>
+                        <span>BUILD STATION FIRST</span>
+                    </button>
                 </div>
-                <div class="progress-container">
-                    <div class="progress-bar" id="defense-progress" style="width: 0%;"></div>
-                    <div class="progress-text" id="defense-progress-text">0 / 75</div>
-                </div>
-                <button class="upgrade-button" id="upgrade-defense-btn" disabled>
-                    <span class="shortcut-key">3</span>
-                    <span>BUILD STATION FIRST</span>
-                </button>
-            </div>
 
-            <!-- Missiles Panel -->
-            <div class="upgrade-panel" id="missiles-panel" style="border-color: #ff8800;">
-                <div class="upgrade-header">
-                    <span class="upgrade-name" style="color: #ff8800;">Missiles</span>
-                    <span class="upgrade-level" style="color: #ff8800;">x<span id="missile-count-panel">10</span></span>
+                <!-- Missiles Panel -->
+                <div class="upgrade-panel" id="missiles-panel" style="border-color: #ff8800;">
+                    <div class="upgrade-header">
+                        <span class="upgrade-name" style="color: #ff8800;">Missiles</span>
+                        <span class="upgrade-level" style="color: #ff8800;">x<span id="missile-count-panel">10</span></span>
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-bar" id="missile-progress" style="width: 0%;"></div>
+                        <div class="progress-text" id="missile-progress-text">0 / 100</div>
+                    </div>
+                    <button class="upgrade-button" id="buy-missiles-btn">
+                        <span class="shortcut-key">4</span>
+                        <span id="missile-btn-text">Buy 10 Pack</span>
+                    </button>
                 </div>
-                <div class="progress-container">
-                    <div class="progress-bar" id="missile-progress" style="width: 0%;"></div>
-                    <div class="progress-text" id="missile-progress-text">0 / 100</div>
-                </div>
-                <button class="upgrade-button" id="buy-missiles-btn">
-                    <span class="shortcut-key">4</span>
-                    <span id="missile-btn-text">Buy 10 Pack</span>
-                </button>
-            </div>
-        </div>
-
-        <!-- Bottom Right: Mission Objectives -->
-        <div id="right-panels">
-            <div class="info-panel">
-                <h3>MISSION OBJECTIVES</h3>
-                <div class="objective-title" id="mission-title">Advance to Nebula Field</div>
-                <div class="objective-item" id="obj-station">○ Station Level: <span id="obj-station-val">0/3</span></div>
-                <div class="objective-item" id="obj-guns">○ Station Guns: <span id="obj-guns-val">0/3</span></div>
-                <div class="objective-item completed" id="obj-ship">✓ Ship Guns: <span id="obj-ship-val">4/3</span></div>
             </div>
         </div>
-
-        <div id="crosshair"></div>
 
         <!-- Damage overlay for player hits -->
         <div id="damage-overlay" style="

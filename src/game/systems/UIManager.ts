@@ -4,11 +4,28 @@ import { Vector3 } from '@babylonjs/core';
 
 export class UIManager {
     private game: Game;
+    private upgradeMenuVisible: boolean = false;
 
     constructor(game: Game) {
         this.game = game;
         this.setupEventListeners();
         this.setupKeyboardShortcuts();
+    }
+
+    private toggleUpgradeMenu(): void {
+        this.upgradeMenuVisible = !this.upgradeMenuVisible;
+        const menu = document.getElementById('upgrade-menu');
+        const hint = document.getElementById('upgrade-hint');
+        if (menu) {
+            if (this.upgradeMenuVisible) {
+                menu.classList.add('visible');
+            } else {
+                menu.classList.remove('visible');
+            }
+        }
+        if (hint) {
+            hint.style.display = this.upgradeMenuVisible ? 'none' : 'block';
+        }
     }
 
     private setupEventListeners(): void {
@@ -78,8 +95,12 @@ export class UIManager {
 
     private setupKeyboardShortcuts(): void {
         window.addEventListener('keydown', (e) => {
+            // Toggle upgrade menu
+            if (e.key === 'u' || e.key === 'U') {
+                this.toggleUpgradeMenu();
+            }
             // Keyboard shortcuts: 1, 2, 3, 4 for upgrades
-            if (e.key === '1' && this.game.progressionManager.canUpgradeShipGuns()) {
+            else if (e.key === '1' && this.game.progressionManager.canUpgradeShipGuns()) {
                 this.game.progressionManager.upgradeShipGuns();
             } else if (e.key === '2' && this.game.progressionManager.canUpgradeStation()) {
                 this.game.progressionManager.upgradeStation();
@@ -94,36 +115,105 @@ export class UIManager {
             } else if (e.key === 't' || e.key === 'T') {
                 this.spawnDebugEnemies();
             }
+            // Close upgrade menu with Escape
+            else if (e.key === 'Escape' && this.upgradeMenuVisible) {
+                this.toggleUpgradeMenu();
+            }
         });
     }
 
     public update(): void {
         const pm = this.game.progressionManager;
+        const playerHealth = Math.round(this.game.player.health);
+        const stationHealth = Math.round(this.game.station.health);
 
-        // Update HUD stats
-        this.updateElement('health', Math.round(this.game.player.health));
+        // Update corner HUD elements
+        this.updateHealthDisplay('health', playerHealth);
+        this.updateHealthDisplay('station-health', stationHealth);
         this.updateElement('resources', pm.resources);
         this.updateElement('enemies', this.game.enemyManager.enemies.length);
-
-        // Update enemy breakdown by type
-        this.updateEnemyBreakdown();
-
-        this.updateElement('station-health', Math.round(this.game.station.health));
         this.updateElement('missile-count', this.game.missileManager.getMissileCount());
 
-        // Update large resource counter
-        this.updateElement('resources-large', pm.resources);
+        // Update weapon info in bottom left corner
+        const weaponConfig = WeaponSystem.getWeaponConfig(pm.shipGunsLevel);
+        this.updateElement('weapon-name', weaponConfig.name);
+        this.updateElement('ship-guns-lvl', pm.shipGunsLevel);
 
         // Update sector info
         this.updateElement('sector', pm.currentSector);
         this.updateElement('sector-name', pm.getSectorName().toUpperCase());
 
-        // Update all upgrade panels
+        // Update enemy breakdown by type
+        this.updateEnemyBreakdown();
+
+        // Update mission objectives in bottom right
+        this.updateMissionObjectives();
+
+        // Update quick upgrade hints
+        this.updateQuickUpgradeHints();
+
+        // Update all upgrade panels (in menu)
         this.updateShipWeaponsPanel();
         this.updateStationPanel();
         this.updateDefensePanel();
         this.updateMissilesPanel();
-        this.updateMissionObjectives();
+    }
+
+    private updateQuickUpgradeHints(): void {
+        const pm = this.game.progressionManager;
+
+        // Show [1] hint if ship guns can be upgraded
+        const hintShip = document.getElementById('hint-ship');
+        if (hintShip) {
+            if (pm.canUpgradeShipGuns()) {
+                hintShip.classList.add('visible');
+            } else {
+                hintShip.classList.remove('visible');
+            }
+        }
+
+        // Show [2] hint if station can be upgraded
+        const hintStation = document.getElementById('hint-station');
+        if (hintStation) {
+            if (pm.canUpgradeStation()) {
+                hintStation.classList.add('visible');
+            } else {
+                hintStation.classList.remove('visible');
+            }
+        }
+
+        // Show [3] hint if defense can be upgraded (and station exists)
+        const hintDefense = document.getElementById('hint-defense');
+        if (hintDefense) {
+            if (pm.stationLevel > 0 && pm.canUpgradeDefense()) {
+                hintDefense.classList.add('visible');
+            } else {
+                hintDefense.classList.remove('visible');
+            }
+        }
+
+        // Show [4] hint if missiles can be purchased
+        const hintMissiles = document.getElementById('hint-missiles');
+        if (hintMissiles) {
+            if (pm.canPurchaseMissiles()) {
+                hintMissiles.classList.add('visible');
+            } else {
+                hintMissiles.classList.remove('visible');
+            }
+        }
+    }
+
+    private updateHealthDisplay(id: string, value: number): void {
+        const element = document.getElementById(id);
+        if (element) {
+            element.textContent = value.toString();
+            element.classList.remove('warning', 'critical');
+            if (value <= 25) {
+                element.classList.add('critical');
+            } else if (value <= 50) {
+                element.classList.add('warning');
+            }
+        }
     }
 
     private updateShipWeaponsPanel(): void {
@@ -133,9 +223,9 @@ export class UIManager {
         // Get weapon config from WeaponSystem
         const weaponConfig = WeaponSystem.getWeaponConfig(level);
 
-        // Update weapon name and level
-        this.updateElement('weapon-name', weaponConfig.name);
-        this.updateElement('ship-guns-lvl', level);
+        // Update weapon name and level in upgrade menu panel
+        this.updateElement('weapon-name-panel', weaponConfig.name);
+        this.updateElement('ship-guns-lvl-panel', level);
 
         // Calculate progress
         const currentResources = pm.resources;
@@ -330,32 +420,25 @@ export class UIManager {
         let stationReq = 3;
         let gunsReq = 3;
         let defenseReq = 3;
-        let missionTitle = 'Advance to Nebula Field';
 
         if (pm.currentSector === 2) {
             stationReq = 5;
             gunsReq = 5;
             defenseReq = 5;
-            missionTitle = 'Advance to Asteroid Belt';
         } else if (pm.currentSector === 3) {
             stationReq = 7;
             gunsReq = 7;
             defenseReq = 7;
-            missionTitle = 'Advance to Alien Territory';
         } else if (pm.currentSector === 4) {
             stationReq = 10;
             gunsReq = 10;
             defenseReq = 10;
-            missionTitle = 'Achieve Maximum Power';
         }
 
-        // Update mission title
-        this.updateElement('mission-title', missionTitle);
-
-        // Update objective items
-        this.updateObjectiveItem('obj-station', `Station Level: ${pm.stationLevel}/${stationReq}`, pm.stationLevel >= stationReq);
-        this.updateObjectiveItem('obj-guns', `Station Guns: ${pm.defenseLevel}/${defenseReq}`, pm.defenseLevel >= defenseReq);
-        this.updateObjectiveItem('obj-ship', `Ship Guns: ${pm.shipGunsLevel}/${gunsReq}`, pm.shipGunsLevel >= gunsReq);
+        // Update compact objective items
+        this.updateObjectiveItem('obj-ship', `Ship: ${pm.shipGunsLevel}/${gunsReq}`, pm.shipGunsLevel >= gunsReq);
+        this.updateObjectiveItem('obj-station', `Station: ${pm.stationLevel}/${stationReq}`, pm.stationLevel >= stationReq);
+        this.updateObjectiveItem('obj-guns', `Defense: ${pm.defenseLevel}/${defenseReq}`, pm.defenseLevel >= defenseReq);
     }
 
     private updateObjectiveItem(id: string, text: string, completed: boolean): void {
