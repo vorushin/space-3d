@@ -98,12 +98,20 @@ The `Game` class (`src/game/Game.ts`) is the central coordinator that:
 - Capital ships: Destroyer (frigate, 1.8), Cruiser (wedge warship, 2.2), Battleship (2.6), Dreadnought (fortress, 3.0), Titan (ultimate capital ship, 3.5)
 - Ships rotate to face target only (no mindless spinning)
 - Health bars: fixed 5-unit width, renderingGroupId=1, zOffset=-10, always visible on top
-- Difficulty progression: heavies at 1.2, cruisers at 2.0, titans at 5.0
 - Maintain optimal shooting range per ship type (configured in EnemyTypeConfig)
 - Smooth movement with deadzone (5 units) to prevent jitter
 - Strafe perpendicular to target direction
 - Speed scales with distance error for smooth approach/retreat
 - All ships feature recognizable spaceship designs: sleek fighters, massive capital ships with bridge towers, engine arrays, weapon batteries
+
+**Enemy Spawn Distribution** (rebalanced for new economy):
+- **Difficulty < 1.5** (Sector 1): 50% scouts, 35% fighters, 15% heavies
+- **Difficulty 1.5-2.0** (Sector 2 transition): 20% scouts, 30% fighters, 30% heavies, 20% destroyers
+- **Difficulty 2.0-2.5** (Sector 2): 15% fighters, 25% heavies, 35% destroyers, 25% cruisers
+- **Difficulty 2.5-3.5** (Sector 3): 15% heavies, 25% destroyers, 30% cruisers, 30% battleships
+- **Difficulty 3.5-5.0** (Sector 4 transition): 15% destroyers, 20% cruisers, 30% battleships, 35% dreadnoughts
+- **Difficulty 5.0-7.0** (Sector 4): 15% cruisers, 20% battleships, 35% dreadnoughts, 30% titans
+- **Difficulty 7.0+** (Ultra late): 20% battleships, 35% dreadnoughts, 45% titans
 
 **Station Design** (`src/game/entities/Station.ts`):
 - Progressive visual evolution from small outpost to massive orbital complex

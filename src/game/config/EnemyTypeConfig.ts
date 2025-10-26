@@ -218,39 +218,71 @@ export class EnemyTypeConfig {
 
     /**
      * Select random enemy type based on difficulty
+     * Rebalanced for new economy with higher resource values
      */
     public static selectRandomType(difficulty: number): EnemyType {
         const roll = Math.random();
 
-        if (difficulty < 1.2) {
-            return roll > 0.5 ? 'scout' : 'fighter';
-        } else if (difficulty < 1.5) {
-            if (roll < 0.25) return 'scout';
-            if (roll < 0.55) return 'fighter';
-            return 'heavy';
-        } else if (difficulty < 2.0) {
-            if (roll < 0.25) return 'fighter';
-            if (roll < 0.6) return 'heavy';
-            return 'destroyer';
-        } else if (difficulty < 2.5) {
-            if (roll < 0.3) return 'heavy';
-            if (roll < 0.65) return 'destroyer';
-            return 'cruiser';
-        } else if (difficulty < 3.5) {
-            if (roll < 0.25) return 'destroyer';
-            if (roll < 0.6) return 'cruiser';
-            return 'battleship';
-        } else if (difficulty < 5.0) {
-            if (roll < 0.25) return 'cruiser';
-            if (roll < 0.6) return 'battleship';
-            return 'dreadnought';
-        } else if (difficulty < 7.0) {
-            if (roll < 0.3) return 'battleship';
-            if (roll < 0.7) return 'dreadnought';
-            return 'titan';
-        } else {
-            if (roll < 0.4) return 'dreadnought';
-            return 'titan';
+        // Difficulty 1.0-1.5: Early game (Sector 1)
+        // Focus: Scouts (8) and Fighters (15), occasional Heavy (25)
+        // Player needs ~70 resources for first weapon upgrade
+        if (difficulty < 1.5) {
+            if (roll < 0.50) return 'scout';      // 50% - Common cannon fodder
+            if (roll < 0.85) return 'fighter';    // 35% - Main threat
+            return 'heavy';                        // 15% - Challenging enemy
+        }
+
+        // Difficulty 1.5-2.0: Mid-early game (Sector 2 transition)
+        // Introduce Heavies and Destroyers, reduce Scouts
+        else if (difficulty < 2.0) {
+            if (roll < 0.20) return 'scout';      // 20% - Still some easy targets
+            if (roll < 0.50) return 'fighter';    // 30% - Common
+            if (roll < 0.80) return 'heavy';      // 30% - Common
+            return 'destroyer';                    // 20% - New threat
+        }
+
+        // Difficulty 2.0-2.5: Mid game (Sector 2)
+        // Heavies and Destroyers dominate, introduce Cruisers
+        else if (difficulty < 2.5) {
+            if (roll < 0.15) return 'fighter';    // 15% - Occasional easy kill
+            if (roll < 0.40) return 'heavy';      // 25% - Common
+            if (roll < 0.75) return 'destroyer';  // 35% - Common
+            return 'cruiser';                      // 25% - Tough enemy
+        }
+
+        // Difficulty 2.5-3.5: Mid-late game (Sector 3)
+        // Destroyers, Cruisers, Battleships
+        else if (difficulty < 3.5) {
+            if (roll < 0.15) return 'heavy';      // 15% - Occasional easier kill
+            if (roll < 0.40) return 'destroyer';  // 25% - Common
+            if (roll < 0.70) return 'cruiser';    // 30% - Common
+            return 'battleship';                   // 30% - Major threat
+        }
+
+        // Difficulty 3.5-5.0: Late game (Sector 4 transition)
+        // Cruisers, Battleships, Dreadnoughts
+        else if (difficulty < 5.0) {
+            if (roll < 0.15) return 'destroyer';  // 15% - Occasional easier kill
+            if (roll < 0.35) return 'cruiser';    // 20% - Common
+            if (roll < 0.65) return 'battleship'; // 30% - Common
+            return 'dreadnought';                  // 35% - Major threat
+        }
+
+        // Difficulty 5.0-7.0: End game (Sector 4)
+        // Battleships, Dreadnoughts, Titans
+        else if (difficulty < 7.0) {
+            if (roll < 0.15) return 'cruiser';    // 15% - Occasional easier kill
+            if (roll < 0.35) return 'battleship'; // 20% - Common
+            if (roll < 0.70) return 'dreadnought';// 35% - Common
+            return 'titan';                        // 30% - Boss-tier
+        }
+
+        // Difficulty 7.0+: Ultra late game
+        // Dreadnoughts and Titans dominate
+        else {
+            if (roll < 0.20) return 'battleship'; // 20% - Easier kills
+            if (roll < 0.55) return 'dreadnought';// 35% - Common
+            return 'titan';                        // 45% - Boss-tier
         }
     }
 }

@@ -52,18 +52,6 @@ export class UIManager {
         missilesBtn?.addEventListener('click', () => {
             this.game.progressionManager.purchaseMissiles();
         });
-
-        // Debug: Add resources
-        const debugAddResourcesBtn = document.getElementById('debug-add-resources');
-        debugAddResourcesBtn?.addEventListener('click', () => {
-            this.game.progressionManager.addResources(1000);
-        });
-
-        // Debug: Spawn all enemy types
-        const debugSpawnEnemiesBtn = document.getElementById('debug-spawn-enemies');
-        debugSpawnEnemiesBtn?.addEventListener('click', () => {
-            this.spawnDebugEnemies();
-        });
     }
 
     private spawnDebugEnemies(): void {

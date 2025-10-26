@@ -200,8 +200,8 @@ export class BackgroundSystem {
     }
 
     private createNebula(position: Vector3, index: number): void {
-        const width = 40 + Math.random() * 60;
-        const height = 30 + Math.random() * 50;
+        const width = 120 + Math.random() * 150;  // Much larger (was 40-100, now 120-270)
+        const height = 90 + Math.random() * 120;   // Much larger (was 30-80, now 90-210)
         const nebula = MeshBuilder.CreatePlane(`nebula${index}`, { width, height }, this.scene);
         nebula.position = position;
 
@@ -211,8 +211,8 @@ export class BackgroundSystem {
         // Random rotation for variation
         nebula.rotate(Vector3.Forward(), Math.random() * Math.PI * 2);
 
-        // Create dynamic texture for nebula
-        const texture = new DynamicTexture(`nebulaTexture${index}`, 512, this.scene);
+        // Create dynamic texture for nebula with higher resolution
+        const texture = new DynamicTexture(`nebulaTexture${index}`, 1024, this.scene);
         const ctx = texture.getContext();
 
         // Nebula color schemes
@@ -243,24 +243,26 @@ export class BackgroundSystem {
 
         // Clear background
         ctx.fillStyle = 'rgba(0, 0, 0, 0)';
-        ctx.fillRect(0, 0, 512, 512);
+        ctx.fillRect(0, 0, 1024, 1024);
 
-        // Draw multiple overlapping clouds
+        // Draw multiple overlapping clouds - more clouds for nebulous effect
         ctx.globalCompositeOperation = 'lighter';
-        const cloudCount = 8 + Math.floor(Math.random() * 8);
+        const cloudCount = 20 + Math.floor(Math.random() * 15);  // Much more clouds (was 8-16, now 20-35)
 
         for (let c = 0; c < cloudCount; c++) {
-            const x = 100 + Math.random() * 312;
-            const y = 100 + Math.random() * 312;
-            const radius = 80 + Math.random() * 120;
+            const x = 150 + Math.random() * 724;
+            const y = 150 + Math.random() * 724;
+            const radius = 150 + Math.random() * 250;  // Much larger clouds (was 80-200, now 150-400)
 
             const colors = [color1, color2, color3];
             const chosenColor = colors[Math.floor(Math.random() * colors.length)];
 
             const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
-            gradient.addColorStop(0, chosenColor + '66');
-            gradient.addColorStop(0.4, chosenColor + '44');
-            gradient.addColorStop(0.7, chosenColor + '22');
+            // More diffuse, transparent gradients for wispy effect
+            gradient.addColorStop(0, chosenColor + '40');     // More transparent (was 66)
+            gradient.addColorStop(0.3, chosenColor + '30');   // Gradual falloff (was 44 at 0.4)
+            gradient.addColorStop(0.6, chosenColor + '18');   // Even more gradual (was 22 at 0.7)
+            gradient.addColorStop(0.85, chosenColor + '08');  // Extended wispy edges
             gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
 
             ctx.fillStyle = gradient;
@@ -269,16 +271,16 @@ export class BackgroundSystem {
             ctx.fill();
         }
 
-        // Add bright spots (stars forming)
+        // Add bright spots (stars forming) - more scattered
         ctx.globalCompositeOperation = 'lighter';
-        for (let s = 0; s < 20; s++) {
-            const x = Math.random() * 512;
-            const y = Math.random() * 512;
-            const size = 2 + Math.random() * 6;
+        for (let s = 0; s < 40; s++) {  // More bright spots (was 20, now 40)
+            const x = Math.random() * 1024;
+            const y = Math.random() * 1024;
+            const size = 3 + Math.random() * 10;  // Larger bright spots (was 2-8, now 3-13)
 
             const starGradient = ctx.createRadialGradient(x, y, 0, x, y, size);
             starGradient.addColorStop(0, '#FFFFFF');
-            starGradient.addColorStop(0.5, color1 + 'CC');
+            starGradient.addColorStop(0.5, color1 + 'AA');  // Slightly more opaque
             starGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
 
             ctx.fillStyle = starGradient;
