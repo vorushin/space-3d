@@ -4,12 +4,13 @@ import { WeaponSystem } from './WeaponSystem';
 export class ProgressionManager {
     private game: Game;
 
-    public resources: number = 100; // Start with some resources
+    public resources: number = 50; // Start with some resources
     public currentSector: number = 1;
 
-    // Station and defense costs (still use old system)
-    private stationCost: number = 100;
-    private defenseCost: number = 75;
+    // Station and defense costs with better scaling
+    private stationCost: number = 150; // Increased from 100
+    private defenseCost: number = 100; // Increased from 75
+    private readonly UPGRADE_COST_MULTIPLIER = 1.4; // Reduced from 1.5 for smoother progression
 
     // Upgrade levels
     public shipGunsLevel: number = 1;
@@ -89,7 +90,7 @@ export class ProgressionManager {
         this.resources -= this.stationCost;
         this.stationLevel++;
         this.game.station.upgrade();
-        this.stationCost = Math.floor(this.stationCost * 1.5);
+        this.stationCost = Math.floor(this.stationCost * this.UPGRADE_COST_MULTIPLIER);
 
         return true;
     }
@@ -107,7 +108,7 @@ export class ProgressionManager {
             this.game.station.turrets.forEach(turret => turret.upgrade());
         }
 
-        this.defenseCost = Math.floor(this.defenseCost * 1.5);
+        this.defenseCost = Math.floor(this.defenseCost * this.UPGRADE_COST_MULTIPLIER);
 
         return true;
     }

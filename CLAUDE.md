@@ -165,7 +165,7 @@ declare global {
 
 **Missile System**:
 - Self-guided homing missiles fired with SPACE key
-- Purchased in 10-packs for 100 resources
+- Purchased in 10-packs, cost scales with weapon level: `80 × (1 + level × 0.15)` (80 at lvl 1, ~200 at lvl 10)
 - Damage scales with weapon level: `15 + (level - 1) × 7.5`
 - Predictive targeting: aims at intercept point, not current position
 - Smart target selection: scores based on alignment (60%) and distance (40%)
@@ -179,6 +179,26 @@ declare global {
 - Player/Turrets: Vary by weapon level (orange→purple→blue→white spectrum)
 - Spark color = blend of weapon color + target material color
 - All hit effects must pass both colors to `ExplosionEffect.createHitSpark()`
+
+**Game Economy**:
+- **Starting resources**: 50
+- **Resource sources**:
+  - Asteroids: 2 per fragment (small asteroids → ~6-10 fragments)
+  - Enemies: Based on ship type (scales with difficulty)
+    - Scout: 8 × difficulty (e.g., 8 at difficulty 1, 16 at difficulty 2)
+    - Fighter: 15 × difficulty
+    - Heavy: 25 × difficulty
+    - Destroyer: 45 × difficulty
+    - Cruiser: 80 × difficulty
+    - Battleship: 140 × difficulty
+    - Dreadnought: 250 × difficulty
+    - Titan: 600 × difficulty
+  - Resource multiplier: Weapon level increases collection by 15% per level (1.0x → 2.5x)
+- **Upgrade costs**:
+  - Weapons: 50 × 1.4^(level-1) (0→70→98→137→192→269→376→527→738→1033)
+  - Station: 150 × 1.4^(level-1) (150→210→294→412→576→807→1130...)
+  - Defense: 100 × 1.4^(level-1) (100→140→196→274→384→538→753...)
+  - Missiles: 80 × (1 + level × 0.15) (80→92→104→116→128→140→152→164→176→188→200)
 
 **Dependency Injection**:
 - `ExplosionEffect` must be passed to: Game → Player (via setter), Station, Asteroid, AsteroidManager, EnemyManager, MissileManager

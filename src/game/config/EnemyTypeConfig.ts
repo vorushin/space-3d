@@ -116,7 +116,7 @@ const DIFFICULTY_SCALARS: Record<EnemyType, {
         speed: 25,
         speedBonus: 3,
         collisionDamage: 5,
-        resourceValue: 3,
+        resourceValue: 8, // Increased from 3
         weaponDamage: 5
     },
     fighter: {
@@ -124,7 +124,7 @@ const DIFFICULTY_SCALARS: Record<EnemyType, {
         speed: 18,
         speedBonus: 2,
         collisionDamage: 10,
-        resourceValue: 7,
+        resourceValue: 15, // Increased from 7
         weaponDamage: 8
     },
     heavy: {
@@ -132,7 +132,7 @@ const DIFFICULTY_SCALARS: Record<EnemyType, {
         speed: 12,
         speedBonus: 1.5,
         collisionDamage: 20,
-        resourceValue: 12,
+        resourceValue: 25, // Increased from 12
         weaponDamage: 15
     },
     destroyer: {
@@ -140,7 +140,7 @@ const DIFFICULTY_SCALARS: Record<EnemyType, {
         speed: 8,
         speedBonus: 1,
         collisionDamage: 30,
-        resourceValue: 20,
+        resourceValue: 45, // Increased from 20
         weaponDamage: 25
     },
     cruiser: {
@@ -148,7 +148,7 @@ const DIFFICULTY_SCALARS: Record<EnemyType, {
         speed: 6,
         speedBonus: 0.8,
         collisionDamage: 50,
-        resourceValue: 35,
+        resourceValue: 80, // Increased from 35
         weaponDamage: 40
     },
     battleship: {
@@ -156,7 +156,7 @@ const DIFFICULTY_SCALARS: Record<EnemyType, {
         speed: 4,
         speedBonus: 0.5,
         collisionDamage: 80,
-        resourceValue: 60,
+        resourceValue: 140, // Increased from 60
         weaponDamage: 70
     },
     dreadnought: {
@@ -164,7 +164,7 @@ const DIFFICULTY_SCALARS: Record<EnemyType, {
         speed: 3,
         speedBonus: 0.3,
         collisionDamage: 150,
-        resourceValue: 100,
+        resourceValue: 250, // Increased from 100
         weaponDamage: 120
     },
     titan: {
@@ -172,7 +172,7 @@ const DIFFICULTY_SCALARS: Record<EnemyType, {
         speed: 2,
         speedBonus: 0.2,
         collisionDamage: 300,
-        resourceValue: 250,
+        resourceValue: 600, // Increased from 250
         weaponDamage: 200
     }
 };

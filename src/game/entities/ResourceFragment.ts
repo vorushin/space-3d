@@ -7,7 +7,7 @@ export class ResourceFragment {
     private velocity: Vector3;
     public isCollected: boolean = false;
     public isLost: boolean = false;
-    public value: number = 1;
+    public value: number = 2; // Increased from 1
 
     private playerGravityRange: number = 50; // Increased from 25 - much wider range
     private stationGravityRange: number = 0; // Depends on station level

@@ -18,7 +18,7 @@ export class MissileManager {
 
     // Purchase system
     private readonly MISSILE_PACK_SIZE = 10;
-    private readonly MISSILE_PACK_COST = 100; // Cost per 10-pack
+    private readonly BASE_MISSILE_COST = 80; // Base cost per 10-pack (reduced from 100)
 
     constructor(scene: Scene, player: Player, explosionEffect: ExplosionEffect) {
         this.scene = scene;
@@ -196,7 +196,9 @@ export class MissileManager {
     }
 
     public getMissilePackCost(): number {
-        return this.MISSILE_PACK_COST;
+        // Scale cost with weapon level (80 at level 1, ~200 at level 10)
+        const weaponLevel = (window as any).game?.progressionManager?.shipGunsLevel || 1;
+        return Math.floor(this.BASE_MISSILE_COST * (1 + weaponLevel * 0.15));
     }
 
     public getMissilePackSize(): number {
