@@ -94,7 +94,20 @@ export class BackgroundSystem {
     }
 
     private createGalaxy(position: Vector3, index: number): void {
-        const size = 15 + Math.random() * 25;
+        // More diverse sizes - some tiny, some huge
+        const sizeType = Math.random();
+        let size: number;
+        if (sizeType < 0.3) {
+            // Small distant galaxies
+            size = 8 + Math.random() * 12;  // 8-20
+        } else if (sizeType < 0.7) {
+            // Medium galaxies
+            size = 20 + Math.random() * 30;  // 20-50
+        } else {
+            // Large prominent galaxies
+            size = 50 + Math.random() * 60;  // 50-110
+        }
+
         const galaxy = MeshBuilder.CreatePlane(`galaxy${index}`, { size: size }, this.scene);
         galaxy.position = position;
 
@@ -258,11 +271,11 @@ export class BackgroundSystem {
             const chosenColor = colors[Math.floor(Math.random() * colors.length)];
 
             const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
-            // More diffuse, transparent gradients for wispy effect
-            gradient.addColorStop(0, chosenColor + '40');     // More transparent (was 66)
-            gradient.addColorStop(0.3, chosenColor + '30');   // Gradual falloff (was 44 at 0.4)
-            gradient.addColorStop(0.6, chosenColor + '18');   // Even more gradual (was 22 at 0.7)
-            gradient.addColorStop(0.85, chosenColor + '08');  // Extended wispy edges
+            // More diffuse, transparent gradients for wispy effect - less bright
+            gradient.addColorStop(0, chosenColor + '28');     // Less bright (was 40)
+            gradient.addColorStop(0.3, chosenColor + '1C');   // Gradual falloff (was 30)
+            gradient.addColorStop(0.6, chosenColor + '10');   // Even more gradual (was 18)
+            gradient.addColorStop(0.85, chosenColor + '06');  // Extended wispy edges (was 08)
             gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
 
             ctx.fillStyle = gradient;
@@ -279,8 +292,8 @@ export class BackgroundSystem {
             const size = 3 + Math.random() * 10;  // Larger bright spots (was 2-8, now 3-13)
 
             const starGradient = ctx.createRadialGradient(x, y, 0, x, y, size);
-            starGradient.addColorStop(0, '#FFFFFF');
-            starGradient.addColorStop(0.5, color1 + 'AA');  // Slightly more opaque
+            starGradient.addColorStop(0, '#FFFFFF88');  // Less bright white core
+            starGradient.addColorStop(0.5, color1 + '66');  // Less bright (was AA)
             starGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
 
             ctx.fillStyle = starGradient;
