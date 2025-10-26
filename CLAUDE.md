@@ -174,8 +174,9 @@ declare global {
 - Auto-explodes after timeout or reaching 300 unit boundary
 
 **Color System**:
-- Enemies: Red projectiles (1, 0, 0)
+- Enemies: Orange/amber projectiles (1, 0.4, 0) - distinct from player and missiles
 - Missiles: Orange-yellow (1.0, 0.8, 0.2)
+- Player/Turrets: Vary by weapon level (orange→purple→blue→white spectrum)
 - Spark color = blend of weapon color + target material color
 - All hit effects must pass both colors to `ExplosionEffect.createHitSpark()`
 

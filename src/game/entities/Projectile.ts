@@ -44,7 +44,8 @@ export class Projectile {
         if (color) {
             this.color = color;
         } else {
-            this.color = (owner === 'player' || owner === 'turret') ? new Color3(0, 1, 0) : new Color3(1, 0, 0);
+            // Player/turret: green, Enemy: orange/amber
+            this.color = (owner === 'player' || owner === 'turret') ? new Color3(0, 1, 0) : new Color3(1, 0.4, 0);
         }
 
         this.mesh = this.createProjectileMesh();
